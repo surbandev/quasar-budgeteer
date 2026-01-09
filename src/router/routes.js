@@ -25,6 +25,12 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'spending',
+        name: 'Spending',
+        component: () => import('pages/PageSpending.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'calendar',
         name: 'Calendar',
         component: () => import('pages/PageCalendar.vue'),
@@ -66,15 +72,9 @@ const routes = [
         component: () => import('pages/PageFeedback.vue'),
         meta: { requiresAuth: true },
       },
-      // Keep old routes for reference
       {
         path: 'entries',
         component: () => import('pages/PageEntries.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
-        path: 'settings',
-        component: () => import('pages/PageSettings.vue'),
         meta: { requiresAuth: true },
       },
     ],

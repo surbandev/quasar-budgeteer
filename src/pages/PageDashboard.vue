@@ -1,118 +1,22 @@
 <template>
   <q-page class="dashboard-page">
     <div class="dashboard-container">
-      <!-- Mobile Menu Toggle -->
-      <q-btn
-        v-if="$q.screen.lt.md"
-        flat
-        dense
-        round
-        icon="menu"
-        class="mobile-menu-btn"
-        @click="$emit('toggle-menu')"
-      />
-
       <!-- Loading State -->
       <q-inner-loading :showing="loading" />
 
-      <!-- Stats Grid -->
-      <div class="stats-grid q-mb-lg">
-        <q-card class="stat-card glass-card">
-          <q-card-section class="flex items-center q-pa-md">
-            <q-icon name="account_balance_wallet" class="stat-icon q-mr-md" />
-            <div class="stat-content">
-              <h3>Monthly Balance</h3>
-              <p class="stat-value" :class="monthlyBalance >= 0 ? 'text-positive' : 'text-negative'">
-                {{ formatCurrency(monthlyBalance) }}
-              </p>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card class="stat-card glass-card">
-          <q-card-section class="flex items-center q-pa-md">
-            <q-icon name="savings" class="stat-icon q-mr-md" />
-            <div class="stat-content">
-              <h3>Savings</h3>
-              <p class="stat-value positive text-positive">{{ formatCurrency(monthlySavings) }}</p>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card class="stat-card glass-card">
-          <q-card-section class="flex items-center q-pa-md">
-            <q-icon name="trending_up" class="stat-icon q-mr-md" />
-            <div class="stat-content">
-              <h3>Income</h3>
-              <p class="stat-value positive text-positive">{{ formatCurrency(monthlyIncome) }}</p>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card class="stat-card glass-card">
-          <q-card-section class="flex items-center q-pa-md">
-            <q-icon name="trending_down" class="stat-icon q-mr-md" />
-            <div class="stat-content">
-              <h3>Expenses</h3>
-              <p class="stat-value negative text-negative">{{ formatCurrency(monthlyExpenses) }}</p>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="charts-row q-mb-lg">
-        <q-card class="chart-card glass-card">
-          <q-card-section>
-            <h3 class="chart-title">Income vs Expenses</h3>
-            <div class="chart-container">
-              <Pie :data="chartData" :options="chartOptions" />
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card class="scenarios-card glass-card">
-          <q-card-section>
-            <h3 class="chart-title">Scenario Toggles</h3>
-            <div class="scenarios-container">
-              <div class="scenarios-header">
-                <q-icon name="layers" class="scenarios-icon" />
-                <span class="scenarios-subtitle">Combine scenarios to include their events in calculations</span>
-              </div>
-              <div class="scenarios-list">
-                <div class="scenario-item default-scenario">
-                  <q-item-label class="scenario-label">Base Budget</q-item-label>
-                  <q-icon name="check_circle" class="default-scenario-icon" color="positive" />
-                </div>
-                <div
-                  v-for="scenario in availableScenarios"
-                  :key="scenario.id"
-                  class="scenario-item"
-                >
-                  <q-item-label class="scenario-label">{{ scenario.name }}</q-item-label>
-                  <q-toggle
-                    :model-value="activeScenarios.has(scenario.id)"
-                    @update:model-value="toggleScenario(scenario)"
-                    color="primary"
-                  />
-                </div>
-                <div v-if="availableScenarios.length === 0" class="no-scenarios">
-                  <q-item-label>No additional scenarios available</q-item-label>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card class="chart-card glass-card">
-          <q-card-section>
-            <h3 class="chart-title">Expense Categories</h3>
-            <div class="chart-container">
-              <Pie :data="expenseCategoriesData" :options="chartOptions" />
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
+      <!-- Spent This Month Chart with Snapshot -->
+      <SpentThisMonthChart
+        :totalSpent="monthlyExpenses"
+        :spentData="dailySpendingData"
+        :monthlyBalance="monthlyBalance"
+        :monthlySavings="monthlySavings"
+        :monthlyIncome="monthlyIncome"
+        :monthlyExpenses="monthlyExpenses"
+        :availableScenarios="availableScenarios"
+        :activeScenarios="activeScenarios"
+        @toggleScenario="toggleScenario"
+        @deleteScenario="deleteScenario"
+      />
 
       <!-- Date Range Filter -->
       <q-card class="glass-card q-mb-lg">
@@ -194,61 +98,23 @@
           </div>
         </q-card-section>
       </q-card>
-
-      <!-- Transaction History -->
-      <q-card class="glass-card">
-        <q-card-section>
-          <div class="flex justify-between items-center q-mb-md">
-            <h3 class="chart-title q-ma-none">Transaction History</h3>
-            <q-btn
-              flat
-              dense
-              :icon="transactionHistoryExpanded ? 'expand_less' : 'expand_more'"
-              :label="transactionHistoryExpanded ? 'Hide' : 'Show'"
-              @click="toggleTransactionHistory"
-            />
-          </div>
-
-          <div v-if="transactionHistoryExpanded">
-            <q-table
-              :rows="sortedFilteredEvents"
-              :columns="columns"
-              row-key="id"
-              flat
-              class="transaction-table"
-              :rows-per-page-options="[10, 25, 50]"
-            >
-              <template v-slot:body-cell-amount="props">
-                <q-td :props="props">
-                  <span :class="props.row.type === 'CREDIT' ? 'text-positive' : 'text-negative'">
-                    {{ formatCurrency(getEventDisplayAmount(props.row)) }}
-                  </span>
-                </q-td>
-              </template>
-            </q-table>
-          </div>
-        </q-card-section>
-      </q-card>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
-import { Pie } from 'vue-chartjs'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
+import { useQuasar } from 'quasar'
 import { useProfileStore } from '../stores/profile'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
+import SpentThisMonthChart from '../components/SpentThisMonthChart.vue'
 import axios from 'axios'
 import { getAPIURL } from '../js/api'
 
-ChartJS.register(ArcElement, Tooltip, Legend)
-
-const $q = useQuasar()
 const router = useRouter()
+const $q = useQuasar()
 const profileStore = useProfileStore()
 const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
@@ -262,7 +128,7 @@ const startYear = ref(null)
 const endMonth = ref(null)
 const endDay = ref(null)
 const endYear = ref(null)
-const transactionHistoryExpanded = ref(true)
+const dailySpendingData = ref([])
 
 const months = [
   { value: 0, label: 'January' },
@@ -283,14 +149,6 @@ const years = Array.from({ length: 60 }, (_, i) => new Date().getFullYear() - 20
 
 const monthOptions = computed(() => months.map((m) => ({ label: m.label, value: m.value })))
 
-const columns = [
-  { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true },
-  { name: 'description', label: 'Description', field: 'name', align: 'left' },
-  { name: 'category', label: 'Category', field: 'category', align: 'left' },
-  { name: 'type', label: 'Type', field: 'type', align: 'left' },
-  { name: 'amount', label: 'Amount', field: 'amount', align: 'right' },
-]
-
 const currentProfile = computed(() => profileStore.currentProfile)
 const selectedScenario = computed(() => scenariosStore.selectedScenario)
 const customScenarios = computed(() => scenariosStore.customScenarios)
@@ -310,20 +168,6 @@ const availableEndDays = computed(() => {
   const year = endYear.value !== null ? endYear.value : new Date().getFullYear()
   const lastDay = new Date(year, month + 1, 0).getDate()
   return Array.from({ length: lastDay }, (_, i) => i + 1)
-})
-
-const sortedFilteredEvents = computed(() => {
-  const eventsToUse =
-    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
-  if (!eventsToUse || !Array.isArray(eventsToUse)) {
-    return []
-  }
-  const events = [...eventsToUse]
-  return events.sort((a, b) => {
-    const dateA = new Date(a.date)
-    const dateB = new Date(b.date)
-    return dateB - dateA
-  })
 })
 
 const monthlyIncome = computed(() => {
@@ -357,124 +201,6 @@ const monthlySavings = computed(() => {
 })
 
 const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
-
-const chartData = computed(() => ({
-  labels: ['Income', 'Expenses'],
-  datasets: [
-    {
-      data: [monthlyIncome.value, monthlyExpenses.value],
-      backgroundColor: ['#4CAF50', '#F44336'],
-      borderColor: ['#4CAF50', '#F44336'],
-      borderWidth: 1,
-    },
-  ],
-}))
-
-const expenseCategoriesData = computed(() => {
-  const eventsToUse =
-    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
-  const categoryTotals = {}
-
-  if (!eventsToUse || !Array.isArray(eventsToUse)) {
-    return {
-      labels: [],
-      datasets: [{ data: [], backgroundColor: [], borderColor: [], borderWidth: 1 }],
-    }
-  }
-
-  eventsToUse.forEach((event) => {
-    if (event.type === 'DEBIT' && event.category) {
-      const category = toTitleCase(event.category)
-      if (!categoryTotals[category]) {
-        categoryTotals[category] = 0
-      }
-      categoryTotals[category] += parseFloat(event.amount || 0)
-    }
-  })
-
-  const categories = Object.keys(categoryTotals)
-  const colors = generateColors(categories.length)
-
-  return {
-    labels: categories,
-    datasets: [
-      {
-        data: Object.values(categoryTotals),
-        backgroundColor: colors,
-        borderColor: colors,
-        borderWidth: 1,
-      },
-    ],
-  }
-})
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        color: 'rgba(255, 255, 255, 0.9)',
-      },
-    },
-  },
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount)
-}
-
-function toTitleCase(str) {
-  if (!str) return ''
-  return str
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-function generateColors(count) {
-  const colors = [
-    '#FFB6C1',
-    '#98FB98',
-    '#87CEEB',
-    '#DDA0DD',
-    '#F0E68C',
-    '#FFA07A',
-    '#B0E0E6',
-    '#FFC0CB',
-    '#90EE90',
-    '#E6E6FA',
-  ]
-  return Array.from({ length: count }, (_, i) => colors[i % colors.length])
-}
-
-function getEventDisplayAmount(event) {
-  if (event.amount !== undefined && event.amount !== null) {
-    return event.amount
-  }
-
-  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
-  if (
-    loanCategories.includes(event.category) &&
-    event.monthly_payment &&
-    event.monthly_payment > 0
-  ) {
-    if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-      return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
-    }
-    return event.monthly_payment
-  }
-  return event.amount
-}
-
-function toggleTransactionHistory() {
-  transactionHistoryExpanded.value = !transactionHistoryExpanded.value
-}
 
 function initializeDateRangeToCurrentMonth() {
   const now = new Date()
@@ -514,6 +240,43 @@ async function updateFilteredData() {
 async function updateScenarioData() {
   combinedActiveEvents.value = await getAllActiveScenarioEvents()
   eventsStore.setFilteredEvents(combinedActiveEvents.value)
+  calculateDailySpending()
+}
+
+function calculateDailySpending() {
+  const eventsToUse =
+    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
+
+  if (!eventsToUse || !Array.isArray(eventsToUse)) {
+    dailySpendingData.value = []
+    return
+  }
+
+  // Get the current month's date range
+  const now = new Date()
+  const year = endYear.value !== null ? endYear.value : now.getFullYear()
+  const month = endMonth.value !== null ? endMonth.value : now.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  // Initialize daily spending array
+  const dailySpending = new Array(daysInMonth).fill(0)
+
+  // Aggregate spending by day
+  eventsToUse.forEach((event) => {
+    if (event.type === 'DEBIT' && event.date) {
+      const eventDate = new Date(event.date)
+      const day = eventDate.getDate()
+      const eventMonth = eventDate.getMonth()
+      const eventYear = eventDate.getFullYear()
+
+      // Only count if it's in the current month
+      if (eventMonth === month && eventYear === year && day <= daysInMonth) {
+        dailySpending[day - 1] += parseFloat(event.amount || 0)
+      }
+    }
+  })
+
+  dailySpendingData.value = dailySpending
 }
 
 async function getAllActiveScenarioEvents() {
@@ -537,8 +300,7 @@ async function getAllActiveScenarioEvents() {
 
   try {
     for (const scenarioId of activeScenarios.value) {
-      const actualScenarioId =
-        scenarioId === 'default' ? selectedScenario.value?.id : scenarioId
+      const actualScenarioId = scenarioId === 'default' ? selectedScenario.value?.id : scenarioId
       if (!actualScenarioId) continue
 
       const monthsToFetch = []
@@ -569,7 +331,7 @@ async function getAllActiveScenarioEvents() {
               month: month,
               year: year,
             },
-          }
+          },
         )
 
         if (response.data && response.data.length > 0) {
@@ -612,7 +374,8 @@ async function getAllActiveScenarioEvents() {
                       eventData.event.escrow &&
                       eventData.event.escrow > 0
                     ) {
-                      displayAmount = parseFloat(monthlyPayment) + parseFloat(eventData.event.escrow)
+                      displayAmount =
+                        parseFloat(monthlyPayment) + parseFloat(eventData.event.escrow)
                     } else {
                       displayAmount = monthlyPayment
                     }
@@ -656,6 +419,38 @@ async function toggleScenario(scenario) {
   }
 
   await updateScenarioData()
+}
+
+async function deleteScenario(scenario) {
+  $q.dialog({
+    title: 'Delete Scenario',
+    message: `Are you sure you want to delete "${scenario.name}"? This action cannot be undone.`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await scenariosStore.deleteScenario(scenario.id)
+
+      // Remove from active scenarios if it was active
+      if (activeScenarios.value.has(scenario.id)) {
+        activeScenarios.value.delete(scenario.id)
+        await updateScenarioData()
+      }
+
+      $q.notify({
+        type: 'positive',
+        message: 'Scenario deleted successfully',
+        position: 'top',
+      })
+    } catch (error) {
+      console.error('Error deleting scenario:', error)
+      $q.notify({
+        type: 'negative',
+        message: 'Failed to delete scenario',
+        position: 'top',
+      })
+    }
+  })
 }
 
 async function initializeDashboard() {
@@ -739,121 +534,301 @@ watch(currentProfile, async (newProfile) => {
 
 <style scoped lang="scss">
 .dashboard-page {
-  padding: 2rem;
+  padding: 1rem;
   min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  position: relative;
+  padding-bottom: 2rem;
 }
 
 .dashboard-container {
   max-width: 1400px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
-.mobile-menu-btn {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
+// Mobile optimization
+@media (max-width: 600px) {
+  .dashboard-page {
+    padding: 0.75rem;
+  }
 }
 
 .charts-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.chart-card,
-.scenarios-card {
-  min-height: 400px;
+.chart-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  transition: all 0.3s ease;
+
+  :deep(.q-card__section) {
+    padding: 1.5rem;
+  }
 }
 
 .chart-container {
-  height: 300px;
+  height: 280px;
   position: relative;
 }
 
 .chart-title {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
-  margin: 0 0 1rem;
+  margin: 0 0 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.scenarios-container {
-  margin-top: 1rem;
+// Responsive charts
+@media (max-width: 600px) {
+  .charts-row {
+    gap: 1rem;
+  }
+
+  .chart-card {
+    border-radius: 16px;
+
+    :deep(.q-card__section) {
+      padding: 1rem;
+    }
+  }
+
+  .chart-container {
+    height: 240px;
+  }
+
+  .chart-title {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+  }
 }
 
-.scenarios-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+@media (min-width: 768px) {
+  .charts-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.scenarios-icon {
-  font-size: 1.5rem;
-  color: rgba(33, 150, 243, 0.8);
+@media (min-width: 1200px) {
+  .charts-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
-.scenarios-subtitle {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
+/* Glass card styling override */
+:deep(.glass-card) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
 }
 
-.scenarios-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+:deep(.glass-card .q-card__section) {
+  color: white;
 }
 
-.scenario-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  transition: background 0.2s;
+/* Date range filters styling */
+.date-range-filters {
+  padding: 0.5rem 0;
+
+  .text-subtitle2 {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+  }
+}
+
+:deep(.q-field) {
+  .q-field__control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    min-height: 48px;
+  }
+
+  .q-field__native,
+  .q-field__input {
+    color: white;
+    padding: 0 0.75rem;
+  }
+
+  .q-field__label {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .q-field__control:before,
+  .q-field__control:after {
+    display: none;
+  }
+
+  &.q-field--focused .q-field__control {
+    border-color: rgba(168, 85, 247, 0.6);
+  }
+}
+
+// Mobile optimization for date filters
+@media (max-width: 600px) {
+  .date-range-filters {
+    :deep(.q-field) {
+      .q-field__control {
+        min-height: 44px;
+        border-radius: 10px;
+      }
+    }
+  }
+}
+
+/* Table styling */
+:deep(.transaction-table) {
+  background: transparent;
+  color: white;
+  border-radius: 12px;
+  overflow: hidden;
+
+  .q-table__top {
+    color: white;
+    padding: 1rem;
+  }
+
+  .q-table__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  thead tr th {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1rem 0.75rem;
+  }
+
+  tbody tr td {
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.05);
+    padding: 1rem 0.75rem;
+  }
+
+  tbody tr {
+    transition: background 0.2s ease;
+
+    &:active {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+
+  .text-positive {
+    color: #4caf50;
+    font-weight: 600;
+  }
+
+  .text-negative {
+    color: #f44336;
+    font-weight: 600;
+  }
+}
+
+/* Button styling */
+:deep(.q-btn) {
+  color: white;
+  border-radius: 10px;
 
   &:hover {
     background: rgba(255, 255, 255, 0.1);
   }
 
-  &.default-scenario {
-    background: rgba(76, 175, 80, 0.2);
-    border: 1px solid rgba(76, 175, 80, 0.4);
+  &:active {
+    transform: scale(0.98);
   }
 }
 
-.scenario-label {
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
+// Mobile table optimization
+@media (max-width: 600px) {
+  :deep(.transaction-table) {
+    thead tr th {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.7rem;
+    }
+
+    tbody tr td {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.85rem;
+    }
+  }
 }
 
-.default-scenario-icon {
-  font-size: 1.5rem;
+/* Toggle styling */
+:deep(.q-toggle) {
+  .q-toggle__track {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+  }
+
+  &.q-toggle--truthy .q-toggle__track {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  }
+
+  .q-toggle__thumb {
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
 }
 
-.no-scenarios {
-  padding: 1rem;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.5);
-}
+/* Select dropdown styling */
+:deep(.q-select) {
+  .q-field__control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+  }
 
-.date-range-filters {
-  .text-subtitle2 {
+  .q-field__native,
+  .q-field__input {
+    color: white;
+  }
+
+  .q-icon {
     color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
+  }
+
+  &.q-field--focused .q-field__control {
+    border-color: rgba(168, 85, 247, 0.6);
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Loading spinner */
+:deep(.q-inner-loading) {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+}
+
+:deep(.q-spinner) {
+  color: #a855f7;
+  width: 48px;
+  height: 48px;
+}
+
+// Tablet and desktop optimizations
+@media (min-width: 1024px) {
+  .dashboard-page {
+    padding: 2rem;
   }
 }
 

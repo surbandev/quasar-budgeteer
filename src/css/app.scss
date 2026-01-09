@@ -14,21 +14,27 @@ input::-webkit-inner-spin-button {
   margin-left: 10px;
 }
 
-// Dark theme and glassmorphism styles
+// Dark theme and glassmorphism styles (matches login/register pages)
 body {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   min-height: 100vh;
 }
 
-// Glass card styling
+// Glass card styling (matches login/register glassmorphism)
 .glass-card {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  }
 
   .q-card__section {
     color: rgba(255, 255, 255, 0.9);
@@ -159,7 +165,7 @@ body {
 
 .stat-icon {
   font-size: 2.5rem;
-  color: rgba(33, 150, 243, 0.8);
+  color: rgba(168, 85, 247, 0.8);
 }
 
 .stat-content {
@@ -247,5 +253,59 @@ body {
 
   tr:hover {
     background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+// Menu/Dropdown styling for dark theme
+.q-menu {
+  background: rgba(30, 30, 30, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  .q-item {
+    color: white;
+    border-radius: 8px;
+    margin: 4px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    &:active {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(0.98);
+    }
+  }
+  
+  // Scenario menu override
+  &.scenario-menu {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+}
+
+// Toggle styling with purple gradient
+.q-toggle {
+  .q-toggle__track {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+  }
+
+  &.q-toggle--truthy .q-toggle__track {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  }
+  
+  .q-toggle__thumb {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// Primary color override for purple theme
+.q-btn--unelevated.q-btn--standard {
+  &.bg-primary {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
   }
 }
