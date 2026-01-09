@@ -1,0 +1,433 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import axios from 'axios'
+import { useScenariosStore } from './scenarios'
+import { getAPIURL } from '../js/api'
+
+export const useEventsStore = defineStore('events', () => {
+  // State
+  const events = ref([])
+  const eventsByMonth = ref([])
+  const filteredEvents = ref([])
+  const combinedActiveEvents = ref([])
+  const loading = ref(false)
+  const error = ref(null)
+  const profile = ref(null)
+  const currentDate = ref(new Date())
+
+  // Getters
+  const allEvents = computed(() => events.value || [])
+  const monthlyEvents = computed(() => eventsByMonth.value || [])
+  const getFilteredEvents = computed(() => filteredEvents.value || [])
+  const activeEvents = computed(() => combinedActiveEvents.value || [])
+  const getCurrentDate = computed(() => currentDate.value)
+  const isLoading = computed(() => loading.value)
+  const hasError = computed(() => error.value !== null)
+
+  const selectedScenario = computed(() => {
+    const scenariosStore = useScenariosStore()
+    return scenariosStore.selectedScenario
+  })
+
+  const scenarios = computed(() => {
+    const scenariosStore = useScenariosStore()
+    return scenariosStore.allScenarios
+  })
+
+  const cashFlowInTotal = computed(() => {
+    let totalCredit = 0
+    if (events.value && events.value.length > 0) {
+      for (let event of events.value) {
+        if (event.type === 'CREDIT') {
+          totalCredit += parseFloat(event.amount)
+        }
+      }
+    }
+    return totalCredit
+  })
+
+  const cashFlowOutTotal = computed(() => {
+    let totalDebit = 0
+    if (events.value && events.value.length > 0) {
+      for (let event of events.value) {
+        if (event.type === 'DEBIT') {
+          totalDebit += parseFloat(event.amount)
+        }
+      }
+    }
+    return totalDebit
+  })
+
+  // Actions
+  function setProfile(prof) {
+    if (prof && prof.id) {
+      profile.value = prof
+    } else {
+      console.warn('Invalid profile provided to events store:', prof)
+    }
+  }
+
+  function setCurrentDate(date) {
+    if (date instanceof Date) {
+      currentDate.value = date
+    } else {
+      console.warn('Invalid date provided to events store:', date)
+      currentDate.value = new Date()
+    }
+  }
+
+  async function fetchEvents() {
+    if (!selectedScenario.value?.id || !profile.value?.id) {
+      console.error('No scenario or profile set for fetching events')
+      return
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const url = `${getAPIURL()}/api/scenario/get-events-for-scenario`
+      const response = await axios.get(url, {
+        params: {
+          scenarioID: selectedScenario.value.id,
+          profileID: profile.value.id,
+        },
+      })
+      events.value = response.data
+    } catch (err) {
+      console.error('Error fetching events:', err)
+      error.value = err.message || 'Failed to fetch events'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchEventsForMonthByScenario() {
+    if (!selectedScenario.value?.id || !profile.value?.id) {
+      console.error('No scenario or profile set for fetching monthly events')
+      return
+    }
+
+    loading.value = true
+    error.value = null
+
+    if (!currentDate.value) {
+      setCurrentDate(new Date())
+    }
+
+    try {
+      const month = Number(currentDate.value.getMonth())
+      const year = Number(currentDate.value.getFullYear())
+
+      const url = `${getAPIURL()}/api/scenario/get-events-for-scenario-for-month`
+      const response = await axios.get(url, {
+        params: {
+          scenarioID: selectedScenario.value.id,
+          profileID: profile.value.id,
+          month: month,
+          year: year,
+        },
+      })
+      eventsByMonth.value = response.data
+
+      convertMonthlyEventsToFiltered()
+    } catch (err) {
+      console.error('Error fetching events for month by scenario:', err)
+      error.value = err.message || 'Failed to fetch monthly events'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchEventsForDateRange(startDate, endDate) {
+    if (!profile.value?.id) {
+      console.error('No profile set for fetching events for date range')
+      return
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const monthsToFetch = []
+      const startYear = startDate.getUTCFullYear()
+      const startMonth = startDate.getUTCMonth()
+      const endYear = endDate.getUTCFullYear()
+      const endMonth = endDate.getUTCMonth()
+
+      let currentYear = startYear
+      let currentMonth = startMonth
+
+      while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+        monthsToFetch.push({ year: currentYear, month: currentMonth })
+
+        currentMonth++
+        if (currentMonth > 11) {
+          currentMonth = 0
+          currentYear++
+        }
+      }
+
+      const allEvents = []
+
+      for (const { year, month } of monthsToFetch) {
+        const response = await axios.get(
+          `${getAPIURL()}/api/scenario/get-events-for-scenario-for-month`,
+          {
+            params: {
+              scenarioID: selectedScenario.value?.id,
+              profileID: profile.value.id,
+              month: month,
+              year: year,
+            },
+          },
+        )
+
+        allEvents.push(...response.data)
+      }
+
+      filterEventsByDateRange(startDate, endDate, allEvents)
+    } catch (err) {
+      console.error('Error fetching events for date range:', err)
+      error.value = err.message || 'Failed to fetch events for date range'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function convertMonthlyEventsToFiltered(startDate = null, endDate = null) {
+    const newFilteredEvents = []
+
+    if (eventsByMonth.value && eventsByMonth.value.length > 0) {
+      eventsByMonth.value.forEach((eventData) => {
+        if (eventData.occurrences) {
+          eventData.occurrences.forEach((occurrence) => {
+            let occurrenceDate
+            if (typeof occurrence === 'string') {
+              if (occurrence.includes('T')) {
+                const datePart = occurrence.split('T')[0]
+                const [year, month, day] = datePart.split('-').map(Number)
+                occurrenceDate = new Date(Date.UTC(year, month - 1, day))
+              } else {
+                const [year, month, day] = occurrence.split('-').map(Number)
+                occurrenceDate = new Date(Date.UTC(year, month - 1, day))
+              }
+            } else {
+              occurrenceDate = new Date(occurrence)
+            }
+
+            if (startDate && endDate) {
+              const occurrenceDateString = occurrenceDate.toISOString().split('T')[0]
+              const startDateString = startDate.toISOString().split('T')[0]
+              const endDateString = endDate.toISOString().split('T')[0]
+
+              if (occurrenceDateString < startDateString || occurrenceDateString > endDateString) {
+                return
+              }
+            }
+
+            const eventToAdd = {
+              ...eventData.event,
+              date: occurrenceDate.toISOString().split('T')[0],
+            }
+            newFilteredEvents.push(eventToAdd)
+          })
+        }
+      })
+    }
+
+    filteredEvents.value = newFilteredEvents
+  }
+
+  function filterEventsByDateRange(startDate, endDate, allEvents) {
+    const newFilteredEvents = []
+    const seenEvents = new Set()
+
+    if (allEvents && allEvents.length > 0) {
+      allEvents.forEach((eventData) => {
+        if (eventData.occurrences) {
+          eventData.occurrences.forEach((occurrence) => {
+            let occurrenceDate
+            if (typeof occurrence === 'string') {
+              if (occurrence.includes('T')) {
+                const datePart = occurrence.split('T')[0]
+                const [year, month, day] = datePart.split('-').map(Number)
+                occurrenceDate = new Date(Date.UTC(year, month - 1, day))
+              } else {
+                const [year, month, day] = occurrence.split('-').map(Number)
+                occurrenceDate = new Date(Date.UTC(year, month - 1, day))
+              }
+            } else {
+              occurrenceDate = new Date(occurrence)
+            }
+
+            const occurrenceDateString = occurrenceDate.toISOString().split('T')[0]
+            const startDateString = startDate.toISOString().split('T')[0]
+            const endDateString = endDate.toISOString().split('T')[0]
+
+            if (occurrenceDateString >= startDateString && occurrenceDateString <= endDateString) {
+              const eventKey = `${eventData.event.id || eventData.event._id}-${occurrenceDateString}`
+
+              if (!seenEvents.has(eventKey)) {
+                seenEvents.add(eventKey)
+                const eventToAdd = {
+                  ...eventData.event,
+                  date: occurrenceDateString,
+                }
+                newFilteredEvents.push(eventToAdd)
+              }
+            }
+          })
+        }
+      })
+    }
+
+    filteredEvents.value = newFilteredEvents
+  }
+
+  async function createEvent(eventData) {
+    if (!profile.value?.id) {
+      throw new Error('No profile set for creating event')
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const url = `${getAPIURL()}/api/scenario/create-event`
+      const response = await axios.post(url, {
+        ...eventData,
+        profileID: profile.value.id,
+      })
+
+      await fetchEvents()
+      await fetchEventsForMonthByScenario()
+
+      return response.data
+    } catch (err) {
+      console.error('Error creating event:', err)
+      error.value = err.message || 'Failed to create event'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateEvent(eventId, updates) {
+    if (!profile.value?.id) {
+      throw new Error('No profile set for updating event')
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const url = `${getAPIURL()}/api/scenario/update-event`
+      const response = await axios.put(url, {
+        eventID: eventId,
+        profileID: profile.value.id,
+        ...updates,
+      })
+
+      await fetchEvents()
+      await fetchEventsForMonthByScenario()
+
+      return response.data
+    } catch (err) {
+      console.error('Error updating event:', err)
+      error.value = err.message || 'Failed to update event'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteEvent(eventId) {
+    if (!profile.value?.id) {
+      throw new Error('No profile set for deleting event')
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const url = `${getAPIURL()}/api/scenario/remove-event`
+      await axios.delete(url, {
+        data: {
+          eventID: eventId,
+          profileID: profile.value.id,
+        },
+      })
+
+      await fetchEvents()
+      await fetchEventsForMonthByScenario()
+    } catch (err) {
+      console.error('Error deleting event:', err)
+      error.value = err.message || 'Failed to delete event'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function reset() {
+    events.value = []
+    eventsByMonth.value = []
+    filteredEvents.value = []
+    combinedActiveEvents.value = []
+    loading.value = false
+    error.value = null
+  }
+
+  function resetForNewUser() {
+    reset()
+    profile.value = null
+  }
+
+  function clearError() {
+    error.value = null
+  }
+
+  function setFilteredEvents(evts) {
+    filteredEvents.value = evts || []
+  }
+
+  return {
+    // State
+    events,
+    eventsByMonth,
+    filteredEvents,
+    combinedActiveEvents,
+    loading,
+    error,
+    profile,
+    currentDate,
+    // Getters
+    allEvents,
+    monthlyEvents,
+    getFilteredEvents,
+    activeEvents,
+    getCurrentDate,
+    isLoading,
+    hasError,
+    selectedScenario,
+    scenarios,
+    cashFlowInTotal,
+    cashFlowOutTotal,
+    // Actions
+    setProfile,
+    setCurrentDate,
+    fetchEvents,
+    fetchEventsForMonthByScenario,
+    fetchEventsForDateRange,
+    convertMonthlyEventsToFiltered,
+    filterEventsByDateRange,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    reset,
+    resetForNewUser,
+    clearError,
+    setFilteredEvents,
+  }
+})

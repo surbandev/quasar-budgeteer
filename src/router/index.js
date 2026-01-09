@@ -33,5 +33,19 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
 
+  // Navigation guard for authentication
+  Router.beforeEach((to, from, next) => {
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+    const token = localStorage.getItem('token')
+
+    if (requiresAuth && !token) {
+      next('/login')
+    } else if ((to.path === '/login' || to.path === '/register') && token) {
+      next('/dashboard')
+    } else {
+      next()
+    }
+  })
+
   return Router
 })

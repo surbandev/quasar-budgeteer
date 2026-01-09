@@ -1,15 +1,251 @@
 // draw nav
 .q-drawer {
-    .q-item {
-        opacity: 0.6;
-        &.q-router-link--exact-active {
-            opacity: 1;
-        }
+  .q-item {
+    opacity: 0.6;
+    &.q-router-link--exact-active {
+      opacity: 1;
     }
+  }
 }
 
 // number input
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-    margin-left: 10px;
+  margin-left: 10px;
+}
+
+// Dark theme and glassmorphism styles
+body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+}
+
+// Glass card styling
+.glass-card {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border-radius: 12px;
+
+  .q-card__section {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+// Input styling for dark theme
+.q-field {
+  .q-field__control {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+
+    &:before {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    &:hover:before {
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  .q-field__native,
+  .q-field__input {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .q-field__label {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .q-field__prepend,
+  .q-field__append {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// Button styling
+.q-btn {
+  text-transform: none;
+  font-weight: 500;
+
+  &.q-btn--flat {
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// Utility classes
+.text-positive {
+  color: #4caf50 !important;
+}
+
+.text-negative {
+  color: #f44336 !important;
+}
+
+.bg-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+// Animation helpers
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-in-up {
+  animation: slideInUp 0.3s ease-out;
+}
+
+// Page container styling
+.q-page {
+  background: transparent;
+}
+
+// Stats card styling (for dashboard)
+.stat-card {
+  padding: 1.5rem;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  }
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+  color: rgba(33, 150, 243, 0.8);
+}
+
+.stat-content {
+  h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+
+  &.positive {
+    color: #4caf50;
+  }
+
+  &.negative {
+    color: #f44336;
+  }
+}
+
+// Calendar styling
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  padding: 1rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &.has-events {
+    background: rgba(33, 150, 243, 0.2);
+    border: 1px solid rgba(33, 150, 243, 0.4);
+  }
+
+  &.today {
+    background: rgba(76, 175, 80, 0.2);
+    border: 2px solid #4caf50;
+  }
+}
+
+// Transaction table styling
+.transaction-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  th {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
