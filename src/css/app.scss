@@ -71,6 +71,17 @@ body {
   }
 }
 
+// Date input calendar icon - make it white
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(2) !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+}
+
+input[type="date"]::-moz-calendar-picker-indicator {
+  filter: invert(1) brightness(2) !important;
+}
+
 // Button styling
 .q-btn {
   text-transform: none;

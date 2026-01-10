@@ -14,8 +14,11 @@
         :monthlyExpenses="monthlyExpenses"
         :availableScenarios="availableScenarios"
         :activeScenarios="activeScenarios"
+        :profiles="allProfiles"
+        :currentProfile="currentProfile"
         @toggleScenario="toggleScenario"
         @deleteScenario="deleteScenario"
+        @profileChange="handleProfileChange"
       />
 
       <!-- Date Range Filter -->
@@ -30,6 +33,8 @@
                     <q-select
                       v-model="startMonth"
                       :options="monthOptions"
+                      option-label="label"
+                      option-value="value"
                       label="Month"
                       outlined
                       dense
@@ -66,6 +71,8 @@
                     <q-select
                       v-model="endMonth"
                       :options="monthOptions"
+                      option-label="label"
+                      option-value="value"
                       label="Month"
                       outlined
                       dense
@@ -131,18 +138,18 @@ const endYear = ref(null)
 const dailySpendingData = ref([])
 
 const months = [
-  { value: 0, label: 'January' },
-  { value: 1, label: 'February' },
-  { value: 2, label: 'March' },
-  { value: 3, label: 'April' },
-  { value: 4, label: 'May' },
-  { value: 5, label: 'June' },
-  { value: 6, label: 'July' },
-  { value: 7, label: 'August' },
-  { value: 8, label: 'September' },
-  { value: 9, label: 'October' },
-  { value: 10, label: 'November' },
-  { value: 11, label: 'December' },
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
 ]
 
 const years = Array.from({ length: 60 }, (_, i) => new Date().getFullYear() - 20 + i)
@@ -150,6 +157,7 @@ const years = Array.from({ length: 60 }, (_, i) => new Date().getFullYear() - 20
 const monthOptions = computed(() => months.map((m) => ({ label: m.label, value: m.value })))
 
 const currentProfile = computed(() => profileStore.currentProfile)
+const allProfiles = computed(() => profileStore.profiles || [])
 const selectedScenario = computed(() => scenariosStore.selectedScenario)
 const customScenarios = computed(() => scenariosStore.customScenarios)
 const filteredEvents = computed(() => eventsStore.filteredEvents)
@@ -157,14 +165,14 @@ const filteredEvents = computed(() => eventsStore.filteredEvents)
 const availableScenarios = computed(() => customScenarios.value)
 
 const availableDays = computed(() => {
-  const month = startMonth.value !== null ? startMonth.value : new Date().getMonth()
+  const month = startMonth.value !== null ? startMonth.value - 1 : new Date().getMonth()
   const year = startYear.value !== null ? startYear.value : new Date().getFullYear()
   const lastDay = new Date(year, month + 1, 0).getDate()
   return Array.from({ length: lastDay }, (_, i) => i + 1)
 })
 
 const availableEndDays = computed(() => {
-  const month = endMonth.value !== null ? endMonth.value : new Date().getMonth()
+  const month = endMonth.value !== null ? endMonth.value - 1 : new Date().getMonth()
   const year = endYear.value !== null ? endYear.value : new Date().getFullYear()
   const lastDay = new Date(year, month + 1, 0).getDate()
   return Array.from({ length: lastDay }, (_, i) => i + 1)
@@ -206,11 +214,11 @@ function initializeDateRangeToCurrentMonth() {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth()
-  startMonth.value = month
+  startMonth.value = month + 1
   startDay.value = 1
   startYear.value = year
   const lastDay = new Date(year, month + 1, 0)
-  endMonth.value = month
+  endMonth.value = month + 1
   endDay.value = lastDay.getDate()
   endYear.value = year
 }
@@ -231,8 +239,8 @@ async function updateFilteredData() {
     initializeDateRangeToCurrentMonth()
   }
 
-  const startDate = new Date(Date.UTC(startYear.value, startMonth.value, startDay.value))
-  const endDate = new Date(Date.UTC(endYear.value, endMonth.value, endDay.value))
+  const startDate = new Date(Date.UTC(startYear.value, startMonth.value - 1, startDay.value))
+  const endDate = new Date(Date.UTC(endYear.value, endMonth.value - 1, endDay.value))
   await eventsStore.fetchEventsForDateRange(startDate, endDate)
   await updateScenarioData()
 }
@@ -255,7 +263,7 @@ function calculateDailySpending() {
   // Get the current month's date range
   const now = new Date()
   const year = endYear.value !== null ? endYear.value : now.getFullYear()
-  const month = endMonth.value !== null ? endMonth.value : now.getMonth()
+  const month = endMonth.value !== null ? endMonth.value - 1 : now.getMonth()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
   // Initialize daily spending array
@@ -289,8 +297,8 @@ async function getAllActiveScenarioEvents() {
 
   let startDate, endDate
   if (hasDateRangeFilter()) {
-    startDate = new Date(Date.UTC(startYear.value, startMonth.value, startDay.value))
-    endDate = new Date(Date.UTC(endYear.value, endMonth.value, endDay.value))
+    startDate = new Date(Date.UTC(startYear.value, startMonth.value - 1, startDay.value))
+    endDate = new Date(Date.UTC(endYear.value, endMonth.value - 1, endDay.value))
   } else {
     const currentMonth = new Date().getMonth()
     const currentYear = new Date().getFullYear()
@@ -453,6 +461,20 @@ async function deleteScenario(scenario) {
   })
 }
 
+async function handleProfileChange(profile) {
+  try {
+    profileStore.setCurrentProfile(profile)
+    await loadProfileData()
+  } catch (error) {
+    console.error('Error changing profile:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to change profile',
+      position: 'top',
+    })
+  }
+}
+
 async function initializeDashboard() {
   try {
     const token = localStorage.getItem('token')
@@ -501,8 +523,8 @@ async function loadProfileData() {
       }
 
       if (hasDateRangeFilter()) {
-        const startDate = new Date(Date.UTC(startYear.value, startMonth.value, startDay.value))
-        const endDate = new Date(Date.UTC(endYear.value, endMonth.value, endDay.value))
+        const startDate = new Date(Date.UTC(startYear.value, startMonth.value - 1, startDay.value))
+        const endDate = new Date(Date.UTC(endYear.value, endMonth.value - 1, endDay.value))
         await eventsStore.fetchEventsForDateRange(startDate, endDate)
       } else {
         await eventsStore.fetchEventsForMonthByScenario()

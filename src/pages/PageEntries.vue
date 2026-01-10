@@ -122,7 +122,7 @@ const monthlyIncome = computed(() => {
   }
   return filteredEvents.value
     .filter((event) => event.type === 'CREDIT')
-    .reduce((sum, event) => sum + parseFloat(event.amount || 0), 0)
+    .reduce((sum, event) => sum + parseFloat(getEventDisplayAmount(event) || 0), 0)
 })
 
 const monthlyExpenses = computed(() => {
@@ -131,7 +131,7 @@ const monthlyExpenses = computed(() => {
   }
   return filteredEvents.value
     .filter((event) => event.type === 'DEBIT')
-    .reduce((sum, event) => sum + parseFloat(event.amount || 0), 0)
+    .reduce((sum, event) => sum + parseFloat(getEventDisplayAmount(event) || 0), 0)
 })
 
 const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
@@ -198,22 +198,19 @@ function formatCurrency(amount) {
 }
 
 function getEventDisplayAmount(event) {
-  if (event.amount !== undefined && event.amount !== null) {
-    return event.amount
+  // Check for loan categories first - use monthly_payment instead of total loan amount
+  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
+  if (loanCategories.includes(event.category)) {
+    if (event.monthly_payment && event.monthly_payment > 0) {
+      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
+        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
+      }
+      return parseFloat(event.monthly_payment)
+    }
   }
 
-  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
-  if (
-    loanCategories.includes(event.category) &&
-    event.monthly_payment &&
-    event.monthly_payment > 0
-  ) {
-    if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-      return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
-    }
-    return event.monthly_payment
-  }
-  return event.amount
+  // For non-loan categories or loans without monthly_payment, use the regular amount
+  return event.amount || 0
 }
 
 function getCategoryColor(category) {

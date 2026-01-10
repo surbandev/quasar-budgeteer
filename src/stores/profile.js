@@ -37,7 +37,17 @@ export const useProfileStore = defineStore('profile', () => {
 
   async function addProfile(profileData) {
     try {
-      await axios.post(`${getAPIURL()}/api/profile/add-new-profile`, profileData)
+      const token = localStorage.getItem('token')
+
+      const config = token
+        ? {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        : {}
+
+      await axios.post(`${getAPIURL()}/api/profile/add-new-profile`, profileData, config)
       await fetchProfiles()
     } catch (error) {
       console.error('Error adding profile:', error)
@@ -47,7 +57,17 @@ export const useProfileStore = defineStore('profile', () => {
 
   async function updateProfile(profileData) {
     try {
-      await axios.put(`${getAPIURL()}/api/profile/update-profile`, profileData)
+      const token = localStorage.getItem('token')
+
+      const config = token
+        ? {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        : {}
+
+      await axios.put(`${getAPIURL()}/api/profile/update-profile`, profileData, config)
       await fetchProfiles()
     } catch (error) {
       console.error('Error updating profile:', error)

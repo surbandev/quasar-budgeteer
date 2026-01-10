@@ -77,6 +77,12 @@ const routes = [
         component: () => import('pages/PageEntries.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'tools',
+        name: 'Tools',
+        component: () => import('pages/PageTools.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
 

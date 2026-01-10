@@ -2,103 +2,111 @@
   <q-layout>
     <q-page-container>
       <q-page class="login-page flex flex-center">
-    <!-- Background animations -->
-    <div class="background-scene">
-      <div class="stars"></div>
+        <!-- Background animations -->
+        <div class="background-scene">
+          <div class="stars"></div>
 
-      <!-- Mathematical Equations Background -->
-      <div class="math-equations">
-        <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
-        <div class="equation equation-2">e^(iπ) + 1 = 0</div>
-        <div class="equation equation-3">∇ × E = -∂B/∂t</div>
-        <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
-        <div class="equation equation-5">φ = (1 + √5)/2</div>
-        <div class="equation equation-6">∂²u/∂t² = c²∇²u</div>
-        <div class="equation equation-7">∫₀^∞ e^(-x²)dx = √π/2</div>
-        <div class="equation equation-8">ζ(s) = ∑(n=1→∞) 1/n^s</div>
-        <div class="equation equation-9">∇ · E = ρ/ε₀</div>
-        <div class="equation equation-10">Γ(n) = (n-1)!</div>
-      </div>
-    </div>
-
-    <div class="app-title-container">
-      <h1 class="app-title">Budgeteer</h1>
-      <div class="title-subtitle">Smart Budget Management</div>
-      <div class="beta-badge">
-        <span class="beta-text">BETA</span>
-      </div>
-    </div>
-
-    <div class="login-container">
-      <q-form @submit="handleLogin" class="login-form">
-        <div class="form-fields-stack">
-          <div class="login-input-group">
-            <label>Username</label>
-            <q-input
-              v-model="username"
-              type="text"
-              placeholder="Enter username"
-              class="login-custom-input"
-              :class="{ 'input-error': usernameError }"
-              @update:model-value="clearUsernameError"
-              borderless
-              dense
-            />
-            <div v-if="usernameError" class="input-error-message">
-              <span>{{ usernameError }}</span>
-            </div>
-          </div>
-
-          <div class="login-input-group">
-            <label>Password</label>
-            <q-input
-              v-model="password"
-              type="password"
-              placeholder="Enter password"
-              class="login-custom-input"
-              :class="{ 'input-error': passwordError }"
-              @update:model-value="clearPasswordError"
-              borderless
-              dense
-            />
-            <div v-if="passwordError" class="input-error-message">
-              <span>{{ passwordError }}</span>
-            </div>
-          </div>
-
-          <div class="login-input-group options-group">
-            <div class="options-row">
-              <q-checkbox 
-                v-model="rememberMe" 
-                label="Remember me"
-                class="remember-me-checkbox"
-                dense
-              />
-              <a href="#" class="forgot-link">Forgot Password?</a>
-            </div>
+          <!-- Mathematical Equations Background -->
+          <div class="math-equations">
+            <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
+            <div class="equation equation-2">e^(iπ) + 1 = 0</div>
+            <div class="equation equation-3">∇ × E = -∂B/∂t</div>
+            <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
+            <div class="equation equation-5">φ = (1 + √5)/2</div>
+            <div class="equation equation-6">∂²u/∂t² = c²∇²u</div>
+            <div class="equation equation-7">∫₀^∞ e^(-x²)dx = √π/2</div>
+            <div class="equation equation-8">ζ(s) = ∑(n=1→∞) 1/n^s</div>
+            <div class="equation equation-9">∇ · E = ρ/ε₀</div>
+            <div class="equation equation-10">Γ(n) = (n-1)!</div>
           </div>
         </div>
 
-        <div class="login-form-actions">
-          <q-btn
-            type="submit"
-            class="login-button"
-            :class="{ loading: isLoading }"
-            :loading="isLoading"
-            :disable="isLoading"
-            unelevated
-            no-caps
-          >
-            <span v-if="!isLoading">LOGIN</span>
-          </q-btn>
-
-          <div class="register-link">
-            Don't have an account? 
-            <router-link to="/register">Register</router-link>
+        <div class="app-title-container">
+          <h1 class="app-title">Budgeteer</h1>
+          <div class="title-subtitle">Smart Budget Management</div>
+          <div class="beta-badge">
+            <span class="beta-text">BETA</span>
           </div>
         </div>
-      </q-form>
-    </div>
+
+        <div class="login-container">
+          <q-form @submit="handleLogin" class="login-form">
+            <div class="form-fields-stack">
+              <div class="login-input-group">
+                <label>Username</label>
+                <q-input
+                  v-model="username"
+                  type="text"
+                  placeholder="Enter username"
+                  class="login-custom-input"
+                  :class="{ 'input-error': usernameError }"
+                  @update:model-value="clearUsernameError"
+                  borderless
+                  dense
+                />
+                <div v-if="usernameError" class="input-error-message">
+                  <span>{{ usernameError }}</span>
+                </div>
+              </div>
+
+              <div class="login-input-group">
+                <label>Password</label>
+                <q-input
+                  v-model="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="Enter password"
+                  class="login-custom-input"
+                  :class="{ 'input-error': passwordError }"
+                  @update:model-value="clearPasswordError"
+                  borderless
+                  dense
+                >
+                  <template v-slot:append>
+                    <q-icon
+                      :name="showPassword ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="showPassword = !showPassword"
+                    />
+                  </template>
+                </q-input>
+                <div v-if="passwordError" class="input-error-message">
+                  <span>{{ passwordError }}</span>
+                </div>
+              </div>
+
+              <div class="login-input-group options-group">
+                <div class="options-row">
+                  <q-checkbox
+                    v-model="rememberMe"
+                    label="Remember me"
+                    class="remember-me-checkbox"
+                    dense
+                  />
+                  <a href="#" class="forgot-link">Forgot Password?</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="login-form-actions">
+              <q-btn
+                type="submit"
+                class="login-button"
+                :class="{ loading: isLoading }"
+                :loading="isLoading"
+                :disable="isLoading"
+                unelevated
+                no-caps
+              >
+                <span v-if="!isLoading">LOGIN</span>
+              </q-btn>
+
+              <div class="register-link">
+                Don't have an account?
+                <router-link to="/register">Register</router-link>
+              </div>
+            </div>
+          </q-form>
+        </div>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -122,6 +130,7 @@ const rememberMe = ref(false)
 const isLoading = ref(false)
 const usernameError = ref('')
 const passwordError = ref('')
+const showPassword = ref(false)
 
 function clearUsernameError() {
   usernameError.value = ''
@@ -187,12 +196,6 @@ async function handleLogin() {
       console.error('Error setting current profile:', e)
       profileStore.setCurrentProfile({ id: response.data.userID })
     }
-
-    $q.notify({
-      type: 'positive',
-      message: 'Login successful!',
-      position: 'top',
-    })
 
     router.push('/dashboard')
   } catch (error) {
@@ -263,26 +266,76 @@ async function handleLogin() {
   font-family: 'Times New Roman', serif;
   font-size: 1.2rem;
   font-weight: 300;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #f5576c 75%,
+    #4facfe 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   opacity: 0;
   transform: scale(0.8);
   white-space: nowrap;
-  text-shadow: 0 0 30px rgba(102, 126, 234, 0.6), 0 0 40px rgba(118, 75, 162, 0.4), 0 0 50px rgba(240, 147, 251, 0.3);
+  text-shadow:
+    0 0 30px rgba(102, 126, 234, 0.6),
+    0 0 40px rgba(118, 75, 162, 0.4),
+    0 0 50px rgba(240, 147, 251, 0.3);
 }
 
-.equation-1 { top: 15%; left: 10%; animation: equationFade 8s ease-in-out infinite 0s; }
-.equation-2 { top: 25%; right: 15%; animation: equationFade 8s ease-in-out infinite 1s; }
-.equation-3 { top: 35%; left: 20%; animation: equationFade 8s ease-in-out infinite 2s; }
-.equation-4 { top: 45%; right: 25%; animation: equationFade 8s ease-in-out infinite 3s; }
-.equation-5 { top: 55%; left: 15%; animation: equationFade 8s ease-in-out infinite 4s; }
-.equation-6 { top: 65%; right: 20%; animation: equationFade 8s ease-in-out infinite 5s; }
-.equation-7 { top: 75%; left: 25%; animation: equationFade 8s ease-in-out infinite 6s; }
-.equation-8 { top: 85%; right: 15%; animation: equationFade 8s ease-in-out infinite 7s; }
-.equation-9 { top: 20%; left: 60%; animation: equationFade 8s ease-in-out infinite 0.5s; }
-.equation-10 { top: 70%; left: 50%; animation: equationFade 8s ease-in-out infinite 1.5s; }
+.equation-1 {
+  top: 15%;
+  left: 10%;
+  animation: equationFade 8s ease-in-out infinite 0s;
+}
+.equation-2 {
+  top: 25%;
+  right: 15%;
+  animation: equationFade 8s ease-in-out infinite 1s;
+}
+.equation-3 {
+  top: 35%;
+  left: 20%;
+  animation: equationFade 8s ease-in-out infinite 2s;
+}
+.equation-4 {
+  top: 45%;
+  right: 25%;
+  animation: equationFade 8s ease-in-out infinite 3s;
+}
+.equation-5 {
+  top: 55%;
+  left: 15%;
+  animation: equationFade 8s ease-in-out infinite 4s;
+}
+.equation-6 {
+  top: 65%;
+  right: 20%;
+  animation: equationFade 8s ease-in-out infinite 5s;
+}
+.equation-7 {
+  top: 75%;
+  left: 25%;
+  animation: equationFade 8s ease-in-out infinite 6s;
+}
+.equation-8 {
+  top: 85%;
+  right: 15%;
+  animation: equationFade 8s ease-in-out infinite 7s;
+}
+.equation-9 {
+  top: 20%;
+  left: 60%;
+  animation: equationFade 8s ease-in-out infinite 0.5s;
+}
+.equation-10 {
+  top: 70%;
+  left: 50%;
+  animation: equationFade 8s ease-in-out infinite 1.5s;
+}
 
 @keyframes equationFade {
   0% {
@@ -323,7 +376,14 @@ async function handleLogin() {
 .app-title {
   font-size: 8rem;
   font-weight: 900;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #f5576c 75%,
+    #4facfe 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -344,7 +404,16 @@ async function handleLogin() {
   transform: translateX(-50%);
   width: 200px;
   height: 6px;
-  background: linear-gradient(90deg, transparent, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #667eea,
+    #764ba2,
+    #f093fb,
+    #f5576c,
+    #4facfe,
+    transparent
+  );
   border-radius: 3px;
   animation: shimmer 3s ease-in-out infinite;
   box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
@@ -360,7 +429,8 @@ async function handleLogin() {
 }
 
 @keyframes shimmer {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
     transform: translateX(-50%) scaleX(0.8);
   }
@@ -413,7 +483,14 @@ async function handleLogin() {
 
 .beta-text {
   display: inline-block;
-  background: linear-gradient(135deg, #ff6b6b 0%, #9c27b0 25%, #673ab7 50%, #3f51b5 75%, #2196f3 100%);
+  background: linear-gradient(
+    135deg,
+    #ff6b6b 0%,
+    #9c27b0 25%,
+    #673ab7 50%,
+    #3f51b5 75%,
+    #2196f3 100%
+  );
   color: white;
   font-size: 0.75rem;
   font-weight: 700;
@@ -421,7 +498,9 @@ async function handleLogin() {
   padding: 0.4rem 1rem;
   border-radius: 20px;
   text-transform: uppercase;
-  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4), 0 0 20px rgba(156, 39, 176, 0.2);
+  box-shadow:
+    0 4px 15px rgba(156, 39, 176, 0.4),
+    0 0 20px rgba(156, 39, 176, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
   position: relative;
   overflow: hidden;
@@ -440,13 +519,18 @@ async function handleLogin() {
 }
 
 @keyframes betaPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
-    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4), 0 0 20px rgba(156, 39, 176, 0.2);
+    box-shadow:
+      0 4px 15px rgba(156, 39, 176, 0.4),
+      0 0 20px rgba(156, 39, 176, 0.2);
   }
   50% {
     transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(156, 39, 176, 0.6), 0 0 30px rgba(156, 39, 176, 0.4);
+    box-shadow:
+      0 6px 20px rgba(156, 39, 176, 0.6),
+      0 0 30px rgba(156, 39, 176, 0.4);
   }
 }
 
@@ -539,6 +623,19 @@ async function handleLogin() {
   border-color: rgba(255, 255, 255, 0.6);
 }
 
+.login-custom-input :deep(.q-field__append) {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.login-custom-input :deep(.q-field__append .q-icon) {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
 .login-custom-input.q-field--focused :deep(.q-field__control) {
   border-color: rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.15);
@@ -579,7 +676,7 @@ async function handleLogin() {
   cursor: pointer;
 }
 
-.remember-me input[type="checkbox"] {
+.remember-me input[type='checkbox'] {
   accent-color: #667eea;
   width: 18px;
   height: 18px;
@@ -701,7 +798,9 @@ async function handleLogin() {
     font-size: 1rem;
   }
 
-  .equation-1, .equation-2, .equation-9 {
+  .equation-1,
+  .equation-2,
+  .equation-9 {
     display: none;
   }
 }

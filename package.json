@@ -1,8 +1,8 @@
 {
-  "name": "quasar-moneyballs",
+  "name": "quasar-budgeteer",
   "version": "0.0.1",
   "description": "A Quasar Project",
-  "productName": "Moneyballs",
+  "productName": "Budgeteer",
   "author": "Shawn Urban <surbanwebdev@gmail.com>",
   "type": "module",
   "private": true,

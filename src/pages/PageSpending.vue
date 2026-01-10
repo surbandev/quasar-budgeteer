@@ -45,7 +45,12 @@
             >
               <q-menu anchor="bottom left" self="top left">
                 <q-list class="type-menu">
-                  <q-item clickable v-close-popup @click="transactionType = 'DEBIT'" class="type-menu-item">
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="transactionType = 'DEBIT'"
+                    class="type-menu-item"
+                  >
                     <q-item-section>
                       <q-item-label>Expenses</q-item-label>
                     </q-item-section>
@@ -53,7 +58,12 @@
                       <q-icon name="check" color="primary" />
                     </q-item-section>
                   </q-item>
-                  <q-item clickable v-close-popup @click="transactionType = 'CREDIT'" class="type-menu-item">
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="transactionType = 'CREDIT'"
+                    class="type-menu-item"
+                  >
                     <q-item-section>
                       <q-item-label>Income</q-item-label>
                     </q-item-section>
@@ -128,7 +138,10 @@
           </div>
         </div>
         <div v-if="categoryBreakdown.length === 0" class="no-data">
-          <span>No {{ transactionType === 'DEBIT' ? 'expense' : 'income' }} data available for the selected period</span>
+          <span
+            >No {{ transactionType === 'DEBIT' ? 'expense' : 'income' }} data available for the
+            selected period</span
+          >
         </div>
       </div>
     </div>
@@ -182,7 +195,8 @@ const categoriesData = computed(() => {
       if (!categoryTotals[category]) {
         categoryTotals[category] = 0
       }
-      categoryTotals[category] += parseFloat(event.amount || 0)
+      const displayAmount = getEventDisplayAmount(event)
+      categoryTotals[category] += parseFloat(displayAmount || 0)
     }
   })
 
@@ -216,7 +230,8 @@ const categoryBreakdown = computed(() => {
       if (!categoryTotals[category]) {
         categoryTotals[category] = 0
       }
-      const amount = parseFloat(event.amount || 0)
+      const displayAmount = getEventDisplayAmount(event)
+      const amount = parseFloat(displayAmount || 0)
       categoryTotals[category] += amount
       total += amount
     }
@@ -329,22 +344,19 @@ function formatDate(dateString) {
 }
 
 function getEventDisplayAmount(event) {
-  if (event.amount !== undefined && event.amount !== null) {
-    return event.amount
+  // Check for loan categories first - use monthly_payment instead of total loan amount
+  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
+  if (loanCategories.includes(event.category)) {
+    if (event.monthly_payment && event.monthly_payment > 0) {
+      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
+        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
+      }
+      return parseFloat(event.monthly_payment)
+    }
   }
 
-  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
-  if (
-    loanCategories.includes(event.category) &&
-    event.monthly_payment &&
-    event.monthly_payment > 0
-  ) {
-    if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-      return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
-    }
-    return event.monthly_payment
-  }
-  return event.amount
+  // For non-loan categories or loans without monthly_payment, use the regular amount
+  return event.amount || 0
 }
 
 function getCategoryIcon(category) {

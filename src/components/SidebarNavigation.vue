@@ -278,9 +278,9 @@ async function handleLogout() {
   width: 280px;
   min-width: 280px;
   height: 100vh;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(26, 26, 26, 0.98) 0%, rgba(13, 13, 13, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(168, 85, 247, 0.2);
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease;
@@ -288,7 +288,8 @@ async function handleLogout() {
 
 .sidebar-header {
   padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.1) 0%, transparent 100%);
 }
 
 .profile-info {
@@ -337,7 +338,7 @@ async function handleLogout() {
   transition: background 0.2s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(168, 85, 247, 0.08);
   }
 }
 
@@ -373,14 +374,14 @@ async function handleLogout() {
   color: rgba(255, 255, 255, 0.7);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(168, 85, 247, 0.1);
     color: rgba(255, 255, 255, 0.9);
   }
 
   &.active {
-    background: rgba(33, 150, 243, 0.2);
-    color: #2196f3;
-    border-left: 3px solid #2196f3;
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+    border-left: 3px solid #a855f7;
   }
 }
 
@@ -407,14 +408,14 @@ async function handleLogout() {
   color: rgba(255, 255, 255, 0.7);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(168, 85, 247, 0.1);
     color: rgba(255, 255, 255, 0.9);
   }
 
   &.active-profile {
-    background: rgba(76, 175, 80, 0.2);
-    color: #4caf50;
-    border-left: 3px solid #4caf50;
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+    border-left: 3px solid #a855f7;
   }
 }
 
@@ -437,14 +438,15 @@ async function handleLogout() {
 .sidebar-footer {
   margin-top: auto;
   padding: 1rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
 }
 
 .logout-item {
-  color: rgba(244, 67, 54, 0.9);
+  color: #ef4444;
 
   &:hover {
-    background: rgba(244, 67, 54, 0.1);
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
   }
 }
 

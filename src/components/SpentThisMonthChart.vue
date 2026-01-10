@@ -138,7 +138,18 @@
         </div>
 
         <div class="snapshot-footer">
-          <span class="snapshot-sync">Last synced: Just now</span>
+          <q-select
+            v-model="selectedProfileId"
+            :options="profileOptions"
+            label="Profile"
+            outlined
+            dense
+            dark
+            emit-value
+            map-options
+            class="profile-select"
+            @update:model-value="onProfileChange"
+          />
         </div>
       </div>
     </q-card-section>
@@ -146,7 +157,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Line } from 'vue-chartjs'
 import {
@@ -205,9 +216,48 @@ const props = defineProps({
     type: Set,
     default: () => new Set(['default']),
   },
+  profiles: {
+    type: Array,
+    default: () => [],
+  },
+  currentProfile: {
+    type: Object,
+    default: null,
+  },
 })
 
-defineEmits(['toggleScenario', 'deleteScenario'])
+const emit = defineEmits(['toggleScenario', 'deleteScenario', 'profileChange'])
+
+const selectedProfileId = ref(props.currentProfile?.id || props.currentProfile?._id || null)
+
+const profileOptions = computed(() => {
+  return props.profiles.map((profile) => {
+    const profileName = profile.first_name && profile.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : profile.first_name || profile.last_name || profile.name || 'Unnamed Profile'
+    return {
+      label: profileName,
+      value: profile.id || profile._id,
+    }
+  })
+})
+
+function onProfileChange(profileId) {
+  const selectedProfile = props.profiles.find((p) => (p.id === profileId) || (p._id === profileId))
+  if (selectedProfile) {
+    emit('profileChange', selectedProfile)
+  }
+}
+
+// Watch for changes in currentProfile prop
+watch(() => props.currentProfile, (newProfile) => {
+  if (newProfile) {
+    const newProfileId = newProfile.id || newProfile._id
+    if (newProfileId !== selectedProfileId.value) {
+      selectedProfileId.value = newProfileId
+    }
+  }
+}, { immediate: true })
 
 const router = useRouter()
 
@@ -523,12 +573,47 @@ function formatCurrency(amount) {
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: none;
-  text-align: center;
+  display: flex;
+  justify-content: center;
 }
 
-.snapshot-sync {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.8rem;
+.profile-select {
+  max-width: 200px;
+  width: 100%;
+
+  :deep(.q-field__control) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(168, 85, 247, 0.3);
+    border-radius: 8px;
+    color: white;
+  }
+
+  :deep(.q-field__label) {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  :deep(.q-field__native) {
+    color: white;
+  }
+
+  :deep(.q-field__messages) {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  :deep(.q-field__hint) {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  &.q-field--focused {
+    :deep(.q-field__control) {
+      border-color: #a855f7;
+      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+    }
+
+    :deep(.q-field__label) {
+      color: #a855f7;
+    }
+  }
 }
 
 // Scenario menu styles

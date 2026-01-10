@@ -370,6 +370,48 @@ export const useEventsStore = defineStore('events', () => {
     }
   }
 
+  async function fetchEventById(eventID) {
+    if (!profile.value?.id || !eventID) {
+      console.error('No profile or event ID set for fetching event')
+      return null
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      // Use the existing endpoint to get all events for the scenario, then filter for the specific event
+      const url = `${getAPIURL()}/api/scenario/get-events-for-scenario`
+      const response = await axios.get(url, {
+        params: {
+          scenarioID: selectedScenario.value?.id,
+          profileID: profile.value.id,
+        },
+      })
+
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('Invalid response data:', response.data)
+        return null
+      }
+
+      // Find the specific event by ID
+      const event = response.data.find((e) => e.id === eventID || e._id === eventID)
+
+      if (event) {
+        return event
+      } else {
+        console.error('Event not found with ID:', eventID)
+        return null
+      }
+    } catch (err) {
+      console.error('Error fetching event by ID:', err)
+      error.value = err.message || 'Failed to fetch event by ID'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   function reset() {
     events.value = []
     eventsByMonth.value = []
@@ -425,6 +467,7 @@ export const useEventsStore = defineStore('events', () => {
     createEvent,
     updateEvent,
     deleteEvent,
+    fetchEventById,
     reset,
     resetForNewUser,
     clearError,

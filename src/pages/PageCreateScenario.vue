@@ -127,7 +127,7 @@ function handleCancel() {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 2rem;
+  padding-top: 1rem;
 }
 
 .background-scene {

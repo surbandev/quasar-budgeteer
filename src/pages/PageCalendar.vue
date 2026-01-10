@@ -1,141 +1,58 @@
 <template>
   <q-page class="calendar-page">
-    <div class="calendar-layout">
-      <!-- Sidebar with Cash Flow Summary -->
-      <div class="calendar-sidebar glass-card">
-        <q-btn
-          flat
-          dense
-          icon="arrow_back"
-          label="Back to Dashboard"
-          class="q-mb-md"
-          @click="goBackToDashboard"
-          no-caps
-        />
+    <div class="calendar-container">
+      <q-inner-loading :showing="isInitializing" />
 
-        <div class="cash-flow-summary q-mb-lg">
-          <h3 class="section-title">Cash Flow Summary</h3>
-          <div class="cash-flow-item">
-            <div class="flow-label">Cash Flow IN</div>
-            <div class="flow-amount positive text-positive">
-              ${{ calendarDaysCreditTotal.toFixed(2) }}
-            </div>
-          </div>
-          <div class="cash-flow-item">
-            <div class="flow-label">Cash Flow OUT</div>
-            <div class="flow-amount negative text-negative">
-              ${{ calendarDaysDebitTotal.toFixed(2) }}
-            </div>
-          </div>
-          <div class="cash-flow-item total">
-            <div class="flow-label">Net Flow</div>
-            <div
-              class="flow-amount"
-              :class="netFlow >= 0 ? 'text-positive' : 'text-negative'"
-            >
-              ${{ netFlow.toFixed(2) }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Active Scenario Section -->
-        <div class="scenarios-section q-mb-lg">
-          <h3 class="section-title">Active Scenario</h3>
-
-          <div class="scenarios-header q-mb-md">
-            <q-icon name="layers" class="scenarios-icon" />
-            <span class="scenarios-subtitle">Select a scenario to display on the calendar</span>
-          </div>
-
-          <div class="scenario-dropdown-container">
-            <q-btn
-              flat
-              dense
-              :label="`Current: ${selectedScenario?.name || 'None'}`"
-              icon="expand_more"
-              class="full-width scenario-dropdown-trigger"
-              @click="showScenarioDropdown = !showScenarioDropdown"
-            />
-
-            <q-menu v-model="showScenarioDropdown">
-              <q-list style="min-width: 200px">
-                <q-item
-                  v-for="scenario in allScenarios"
-                  :key="scenario.id"
-                  clickable
-                  v-close-popup
-                  @click="handleScenarioSelection(scenario)"
-                  :active="selectedScenario?.id === scenario.id"
-                >
-                  <q-item-section>
-                    <q-item-label>{{ scenario.name }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side v-if="selectedScenario?.id === scenario.id">
-                    <q-icon name="check_circle" color="positive" />
-                  </q-item-section>
-                </q-item>
-
-                <q-separator />
-
-                <q-item clickable v-close-popup @click="handleCreateScenario">
-                  <q-item-section avatar>
-                    <q-icon name="add" color="primary" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Create New Scenario</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </div>
-        </div>
-
-        <div class="quick-actions">
-          <h3 class="section-title">Quick Add</h3>
-          <q-btn
-            color="primary"
-            label="Add Transaction"
-            class="full-width"
-            @click="goToAddTransaction('add')"
-            no-caps
-          />
-        </div>
-      </div>
-
-      <!-- Calendar -->
-      <div class="calendar-main">
+      <!-- Calendar View -->
+      <div v-if="currentView === 'calendar'" class="calendar-view">
         <q-card class="glass-card">
           <q-card-section>
-            <div class="calendar-header">
-              <q-btn
-                flat
-                dense
-                round
-                icon="chevron_left"
-                @click="handlePreviousMonth"
-              />
-              <h2 class="month-title">{{ currentMonthYear }}</h2>
-              <q-btn
-                flat
-                dense
-                round
-                icon="chevron_right"
-                @click="handleNextMonth"
-              />
+            <div class="view-header">
+              <h2 class="view-title">Calendar</h2>
+              <div class="calendar-header-controls">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="chevron_left"
+                  @click="handlePreviousMonth"
+                  color="white"
+                />
+                <h3 class="month-title">{{ currentMonthYear }}</h3>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="chevron_right"
+                  @click="handleNextMonth"
+                  color="white"
+                />
+              </div>
+            </div>
+
+            <div class="cash-flow-summary-inline q-mb-lg">
+              <div class="cash-flow-item">
+                <span class="flow-label">Cash Flow IN</span>
+                <span class="flow-amount positive">${{ calendarDaysCreditTotal.toFixed(2) }}</span>
+              </div>
+              <div class="cash-flow-item">
+                <span class="flow-label">Cash Flow OUT</span>
+                <span class="flow-amount negative">${{ calendarDaysDebitTotal.toFixed(2) }}</span>
+              </div>
+              <div class="cash-flow-item">
+                <span class="flow-label">Net Flow</span>
+                <span class="flow-amount" :class="netFlow >= 0 ? 'positive' : 'negative'">
+                  ${{ netFlow.toFixed(2) }}
+                </span>
+              </div>
             </div>
 
             <div class="calendar-grid-wrapper">
-              <!-- Day headers -->
               <div class="calendar-grid">
-                <div
-                  v-for="day in daysOfWeek"
-                  :key="day"
-                  class="calendar-day-header"
-                >
+                <div v-for="day in daysOfWeek" :key="day" class="calendar-day-header">
                   {{ day }}
                 </div>
 
-                <!-- Calendar days -->
                 <div
                   v-for="date in calendarDays"
                   :key="`${date.date.getTime()}-${date.currentMonth ? 'current' : 'other'}`"
@@ -166,26 +83,479 @@
           </q-card-section>
         </q-card>
       </div>
+
+      <!-- Scenarios View -->
+      <div v-else-if="currentView === 'scenarios'" class="scenarios-view">
+        <!-- Background animations -->
+        <div class="background-scene">
+          <div class="math-equations">
+            <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
+            <div class="equation equation-2">e^(iπ) + 1 = 0</div>
+            <div class="equation equation-3">∇ × E = -∂B/∂t</div>
+            <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
+          </div>
+        </div>
+
+        <div class="scenarios-container">
+          <h2 class="scenarios-title">Manage Scenarios</h2>
+
+          <div class="scenarios-content-card glass-card">
+            <div class="scenario-section">
+              <h3 class="section-title">Active Scenario</h3>
+              <p class="section-description">Select a scenario to display on the calendar</p>
+
+              <div class="scenario-list">
+                <div
+                  v-for="scenario in allScenarios"
+                  :key="scenario.id"
+                  class="scenario-item"
+                  :class="{ active: selectedScenario?.id === scenario.id }"
+                  @click="handleScenarioSelection(scenario)"
+                >
+                  <div class="scenario-item-icon">
+                    <q-icon name="layers" size="24px" />
+                  </div>
+                  <div class="scenario-item-content">
+                    <div class="scenario-item-name">{{ scenario.name }}</div>
+                    <div v-if="scenario.description" class="scenario-item-description">
+                      {{ scenario.description }}
+                    </div>
+                  </div>
+                  <div v-if="selectedScenario?.id === scenario.id" class="scenario-item-check">
+                    <q-icon name="check_circle" color="positive" size="24px" />
+                  </div>
+                </div>
+              </div>
+
+              <q-btn
+                label="Create New Scenario"
+                icon="add"
+                class="create-scenario-btn"
+                @click="handleCreateScenario"
+                unelevated
+                no-caps
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction View -->
+      <div v-else-if="currentView === 'transaction'" class="transaction-view">
+        <!-- Background animations -->
+        <div class="background-scene">
+          <div class="math-equations">
+            <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
+            <div class="equation equation-2">e^(iπ) + 1 = 0</div>
+            <div class="equation equation-3">∇ × E = -∂B/∂t</div>
+            <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
+          </div>
+        </div>
+
+        <div class="transaction-container">
+          <h2 class="transaction-title">Add Transaction</h2>
+
+          <div class="transaction-content-card glass-card">
+            <q-form @submit="saveTransaction" class="transaction-form">
+              <!-- Category Selection -->
+              <div class="form-section">
+                <div class="section-header">
+                  <q-badge color="primary" label="1" />
+                  <span class="section-title">Transaction Category</span>
+                </div>
+
+                <q-select
+                  v-model="newTransaction.category"
+                  :options="categoryOptions"
+                  label="Category"
+                  outlined
+                  dense
+                  dark
+                  emit-value
+                  map-options
+                  @update:model-value="handleCategoryChange"
+                />
+              </div>
+
+              <!-- Transaction Details -->
+              <div v-if="newTransaction.category" class="form-section">
+                <div class="section-header">
+                  <q-badge color="primary" label="2" />
+                  <span class="section-title">Transaction Details</span>
+                </div>
+
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
+                    <q-input v-model="newTransaction.name" label="Name" outlined dense required />
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="newTransaction.description"
+                      label="Description"
+                      outlined
+                      dense
+                      required
+                    />
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model.number="newTransaction.amount"
+                      type="number"
+                      :label="isLoanCategory ? 'Total Loan Amount ($)' : 'Amount ($)'"
+                      outlined
+                      dense
+                      required
+                      step="0.01"
+                    />
+                  </div>
+
+                  <!-- Loan-specific fields -->
+                  <div v-if="isLoanCategory" class="col-12 col-md-6">
+                    <q-input
+                      v-model.number="newTransaction.interest"
+                      type="number"
+                      label="Interest Rate (%)"
+                      outlined
+                      dense
+                      required
+                      step="0.001"
+                      hint="Annual interest rate"
+                    />
+                  </div>
+
+                  <div v-if="isLoanCategory" class="col-12 col-md-6">
+                    <q-select
+                      v-model="newTransaction.loanTerm"
+                      :options="loanTermOptions"
+                      label="Loan Term"
+                      outlined
+                      dense
+                      dark
+                      emit-value
+                      map-options
+                      :hint="isLoanCategory ? 'Required for loan calculation' : ''"
+                    />
+                  </div>
+
+                  <div v-if="isLoanCategory" class="col-12 col-md-6">
+                    <q-input
+                      v-model.number="newTransaction.principal"
+                      type="number"
+                      label="Additional Principal Payment ($)"
+                      outlined
+                      dense
+                      step="0.01"
+                      hint="Optional extra monthly payment"
+                    />
+                  </div>
+
+                  <div v-if="isMortgageCategory" class="col-12 col-md-6">
+                    <q-input
+                      v-model.number="newTransaction.escrow"
+                      type="number"
+                      label="Escrow ($)"
+                      outlined
+                      dense
+                      step="0.01"
+                      hint="Monthly escrow amount (taxes, insurance, etc.)"
+                    />
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-select
+                      v-model="newTransaction.frequency"
+                      :options="frequencyOptions"
+                      label="Frequency"
+                      outlined
+                      dense
+                      dark
+                      emit-value
+                      map-options
+                    />
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-select
+                      v-model="newTransaction.type"
+                      :options="typeOptions"
+                      label="Type"
+                      outlined
+                      dense
+                      dark
+                      emit-value
+                      map-options
+                    />
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-select
+                      v-model="newTransaction.scenarioID"
+                      :options="scenarioOptionsForTransaction"
+                      label="Scenario"
+                      outlined
+                      dense
+                      dark
+                      emit-value
+                      map-options
+                    />
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="newTransaction.startDate"
+                      type="date"
+                      label="Start Date"
+                      outlined
+                      dense
+                      required
+                    />
+                  </div>
+
+                  <!-- End Date - hidden for loans, shown for regular transactions -->
+                  <div v-if="!isLoanCategory" class="col-12 col-md-6">
+                    <q-input
+                      v-model="newTransaction.endDate"
+                      type="date"
+                      label="End Date"
+                      outlined
+                      dense
+                      required
+                    />
+                  </div>
+
+                  <!-- For loans, show calculated end date as read-only info -->
+                  <div v-if="isLoanCategory && loanCalculationPreview" class="col-12 col-md-6">
+                    <q-input
+                      :model-value="newTransaction.endDate"
+                      type="text"
+                      label="End Date (Calculated)"
+                      outlined
+                      dense
+                      readonly
+                      hint="Automatically calculated from loan term"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Loan Calculation Preview -->
+              <div
+                v-if="isLoanCategory && loanCalculationPreview"
+                class="loan-preview-card q-mt-lg"
+              >
+                <h4 class="loan-preview-title">Loan Calculation Details</h4>
+                <div class="loan-preview-grid">
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Standard Payment:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(loanCalculationPreview.standardPayment || 0).replace(
+                        /^[+-]\s/,
+                        '',
+                      )
+                    }}</span>
+                  </div>
+                  <div v-if="isMortgageCategory" class="loan-preview-item highlight">
+                    <span class="loan-preview-label">Total Monthly Payment:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(
+                        (loanCalculationPreview.monthlyPayment || 0) +
+                          (parseFloat(newTransaction.escrow) || 0),
+                      ).replace(/^[+-]\s/, '')
+                    }}</span>
+                  </div>
+                  <div v-else class="loan-preview-item highlight">
+                    <span class="loan-preview-label">Total Monthly Payment:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(
+                        (loanCalculationPreview.standardPayment || 0) +
+                          (loanCalculationPreview.additionalPrincipal || 0),
+                      ).replace(/^[+-]\s/, '')
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Additional Principal:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(loanCalculationPreview.additionalPrincipal || 0).replace(
+                        /^[+-]\s/,
+                        '',
+                      )
+                    }}</span>
+                  </div>
+                  <div v-if="isMortgageCategory" class="loan-preview-item">
+                    <span class="loan-preview-label">Escrow Payment:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(parseFloat(newTransaction.escrow) || 0).replace(/^[+-]\s/, '')
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Loan Term:</span>
+                    <span class="loan-preview-value"
+                      >{{ loanCalculationPreview.totalPayments }} months</span
+                    >
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">End Date:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanDate(loanCalculationPreview.endDate)
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Total Interest:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(loanCalculationPreview.totalInterest || 0).replace(
+                        /^[+-]\s/,
+                        '',
+                      )
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Total Paid Over Term:</span>
+                    <span class="loan-preview-value">{{
+                      currencyFormat(
+                        loanCalculationPreview.monthlyPayment *
+                          loanCalculationPreview.totalPayments,
+                      ).replace(/^[+-]\s/, '')
+                    }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Form Actions -->
+              <div class="form-actions q-mt-lg">
+                <q-btn
+                  type="submit"
+                  label="Save Transaction"
+                  color="primary"
+                  :loading="isSavingTransaction"
+                  unelevated
+                  no-caps
+                  class="save-transaction-btn"
+                />
+              </div>
+            </q-form>
+          </div>
+        </div>
+      </div>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
+import axios from 'axios'
+import { getAPIURL } from '../js/api'
+import { currencyFormat } from '../js/utils'
 import { useCalendarStore } from '../stores/calendar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 
 const router = useRouter()
+const route = useRoute()
+const $q = useQuasar()
 const calendarStore = useCalendarStore()
 const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const isTransitioning = ref(false)
-const showScenarioDropdown = ref(false)
 const isInitializing = ref(false)
+const isSavingTransaction = ref(false)
+const loanCalculationPreview = ref(null)
+const loanCalculationTimeout = ref(null)
+
+// Transaction form state
+const newTransaction = ref({
+  name: '',
+  description: '',
+  amount: null,
+  category: '',
+  frequency: 'MONTHLY',
+  type: 'DEBIT',
+  startDate: new Date().toISOString().split('T')[0],
+  endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  scenarioID: '',
+  profileID: '',
+  interest: null,
+  principal: null,
+  loanTerm: '',
+  escrow: null,
+})
+
+const categoryOptions = [
+  { label: 'Mortgage', value: 'MORTGAGE' },
+  { label: 'Rent', value: 'RENT' },
+  { label: 'Grocery', value: 'GROCERY' },
+  { label: 'Dining', value: 'DINING' },
+  { label: 'Entertainment', value: 'ENTERTAINMENT' },
+  { label: 'Utilities', value: 'UTILITY' },
+  { label: 'Subscription', value: 'SUBSCRIPTION' },
+  { label: 'Insurance', value: 'INSURANCE' },
+  { label: 'Generic Loan', value: 'GENERIC_LOAN' },
+  { label: 'Auto Loan', value: 'AUTO_LOAN' },
+  { label: 'Credit Card', value: 'CREDIT_CARD' },
+  { label: 'Phone', value: 'PHONE' },
+  { label: 'Savings', value: 'SAVINGS' },
+  { label: 'Primary Income', value: 'PRIMARY_INCOME' },
+  { label: 'Secondary Income', value: 'SECONDARY_INCOME' },
+  { label: 'Misc Income', value: 'MISC' },
+]
+
+const frequencyOptions = [
+  { label: 'Once', value: 'ONCE' },
+  { label: 'Daily', value: 'DAILY' },
+  { label: 'Weekly', value: 'WEEKLY' },
+  { label: 'Every Other Week', value: 'EVERY_OTHER_WEEK' },
+  { label: 'Monthly', value: 'MONTHLY' },
+  { label: 'Every Other Month', value: 'EVERY_OTHER_MONTH' },
+  { label: 'Yearly', value: 'YEARLY' },
+]
+
+const typeOptions = [
+  { label: 'Income', value: 'CREDIT' },
+  { label: 'Expense', value: 'DEBIT' },
+]
+
+const loanTermOptions = [
+  { label: '12 months (1 year)', value: '12' },
+  { label: '24 months (2 years)', value: '24' },
+  { label: '36 months (3 years)', value: '36' },
+  { label: '48 months (4 years)', value: '48' },
+  { label: '60 months (5 years)', value: '60' },
+  { label: '72 months (6 years)', value: '72' },
+  { label: '84 months (7 years)', value: '84' },
+  { label: '96 months (8 years)', value: '96' },
+  { label: '108 months (9 years)', value: '108' },
+  { label: '120 months (10 years)', value: '120' },
+  { label: '132 months (11 years)', value: '132' },
+  { label: '144 months (12 years)', value: '144' },
+  { label: '156 months (13 years)', value: '156' },
+  { label: '168 months (14 years)', value: '168' },
+  { label: '180 months (15 years)', value: '180' },
+  { label: '192 months (16 years)', value: '192' },
+  { label: '204 months (17 years)', value: '204' },
+  { label: '216 months (18 years)', value: '216' },
+  { label: '228 months (19 years)', value: '228' },
+  { label: '240 months (20 years)', value: '240' },
+  { label: '252 months (21 years)', value: '252' },
+  { label: '264 months (22 years)', value: '264' },
+  { label: '276 months (23 years)', value: '276' },
+  { label: '288 months (24 years)', value: '288' },
+  { label: '300 months (25 years)', value: '300' },
+  { label: '312 months (26 years)', value: '312' },
+  { label: '324 months (27 years)', value: '324' },
+  { label: '336 months (28 years)', value: '336' },
+  { label: '348 months (29 years)', value: '348' },
+  { label: '360 months (30 years)', value: '360' },
+]
+
+// Determine current view from query parameter
+const currentView = computed(() => {
+  return route.query.view || 'calendar'
+})
 
 const netFlow = computed(() => calendarStore.netFlow)
 const currentMonthYear = computed(() => calendarStore.currentMonthYear)
@@ -199,6 +569,22 @@ const selectedScenario = computed(() => scenariosStore.selectedScenario)
 const hasScenarios = computed(() => scenariosStore.hasScenarios)
 
 const monthlyEvents = computed(() => eventsStore.monthlyEvents)
+
+const scenarioOptionsForTransaction = computed(() => {
+  return allScenarios.value.map((s) => ({
+    label: s.name,
+    value: s.id,
+  }))
+})
+
+const isLoanCategory = computed(() => {
+  const loanCategories = ['MORTGAGE', 'AUTO_LOAN', 'GENERIC_LOAN']
+  return loanCategories.includes(newTransaction.value.category)
+})
+
+const isMortgageCategory = computed(() => {
+  return newTransaction.value.category === 'MORTGAGE'
+})
 
 function getEventDisplayAmount(event) {
   if (event.amount !== undefined && event.amount !== null) {
@@ -263,14 +649,212 @@ function handleCreateScenario() {
   goToCreateScenarioPage()
 }
 
-async function goBackToDashboard() {
-  try {
-    await scenariosStore.selectDefaultScenario()
-  } catch (error) {
-    console.error('Error resetting to default scenario:', error)
+function handleCategoryChange(value) {
+  const incomeCategories = ['PRIMARY_INCOME', 'SECONDARY_INCOME', 'MISC']
+  if (incomeCategories.includes(value)) {
+    newTransaction.value.type = 'CREDIT'
+  } else {
+    newTransaction.value.type = 'DEBIT'
   }
 
-  router.push('/dashboard')
+  // Trigger loan calculation if switching to/from loan category
+  if (isLoanCategory.value) {
+    debouncedCalculateLoan()
+  } else {
+    loanCalculationPreview.value = null
+  }
+}
+
+function calculateEndDateFromTerm() {
+  if (!isLoanCategory.value || !newTransaction.value.startDate || !newTransaction.value.loanTerm) {
+    return
+  }
+
+  const startDate = new Date(newTransaction.value.startDate)
+  const termInMonths = parseInt(newTransaction.value.loanTerm)
+
+  if (!isNaN(startDate.getTime()) && termInMonths > 0) {
+    const endDate = new Date(startDate)
+    endDate.setMonth(endDate.getMonth() + termInMonths)
+    newTransaction.value.endDate = endDate.toISOString().split('T')[0]
+  }
+}
+
+function debouncedCalculateLoan() {
+  // Only calculate simple end date if we don't have all required fields for API calculation
+  const hasAllFields =
+    newTransaction.value.amount &&
+    newTransaction.value.interest &&
+    newTransaction.value.loanTerm &&
+    newTransaction.value.startDate
+
+  if (!hasAllFields && newTransaction.value.startDate && newTransaction.value.loanTerm) {
+    // Fallback: simple calculation from term only (without principal payment consideration)
+    calculateEndDateFromTerm()
+  }
+
+  // Clear existing timeout
+  if (loanCalculationTimeout.value) {
+    clearTimeout(loanCalculationTimeout.value)
+  }
+
+  // Set new timeout for 500ms delay - API will calculate correct end date with principal payment
+  loanCalculationTimeout.value = setTimeout(() => {
+    calculateLoanDetails()
+  }, 500)
+}
+
+async function calculateLoanDetails() {
+  if (!isLoanCategory.value) {
+    loanCalculationPreview.value = null
+    return
+  }
+
+  const totalLoanAmount = parseFloat(newTransaction.value.amount) || 0
+  const additionalPrincipalPayment = parseFloat(newTransaction.value.principal) || 0
+  const interestRate = parseFloat(newTransaction.value.interest) || 0
+  const startDate = newTransaction.value.startDate
+  const loanTerm = newTransaction.value.loanTerm
+
+  // Validate required fields
+  if (!totalLoanAmount || !interestRate || !startDate || !loanTerm) {
+    loanCalculationPreview.value = null
+    return
+  }
+
+  try {
+    const response = await axios.post(`${getAPIURL()}/api/scenario/calculate-loan-details`, {
+      totalLoanAmount,
+      additionalPrincipalPayment,
+      interestRate,
+      startDate: startDate.split('T')[0],
+      loanTerm: parseInt(loanTerm),
+    })
+
+    if (response.data) {
+      loanCalculationPreview.value = response.data
+
+      // Auto-update the end date
+      if (response.data.endDate) {
+        newTransaction.value.endDate = new Date(response.data.endDate).toISOString().split('T')[0]
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating loan:', error)
+    loanCalculationPreview.value = null
+  }
+}
+
+function formatLoanDate(dateString) {
+  if (!dateString) return 'N/A'
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return 'Invalid Date'
+  }
+}
+
+async function saveTransaction() {
+  isSavingTransaction.value = true
+  try {
+    // Format dates
+    const formattedStartDate = newTransaction.value.startDate.split('T')[0]
+    const formattedEndDate = newTransaction.value.endDate.split('T')[0]
+
+    // Build event data matching the original app's format
+    const eventData = {
+      name: newTransaction.value.name,
+      description: newTransaction.value.description,
+      amount: parseFloat(newTransaction.value.amount),
+      category: newTransaction.value.category,
+      frequency: newTransaction.value.frequency,
+      type: newTransaction.value.type,
+      startDate: formattedStartDate,
+      endDate: formattedEndDate,
+      scenarioID: newTransaction.value.scenarioID || selectedScenario.value.id,
+      profileID: profile.value.id,
+      active: true,
+    }
+
+    // Add loan-specific fields if applicable (matching original app format)
+    if (isLoanCategory.value) {
+      eventData.principal = newTransaction.value.principal
+        ? parseFloat(newTransaction.value.principal)
+        : null
+      eventData.interest = newTransaction.value.interest
+        ? parseFloat(newTransaction.value.interest)
+        : null
+      eventData.loanTerm = newTransaction.value.loanTerm
+        ? parseInt(newTransaction.value.loanTerm)
+        : null
+
+      // Add calculated monthly payment from loan calculation
+      if (loanCalculationPreview.value) {
+        eventData.monthlyPayment = parseFloat(loanCalculationPreview.value.monthlyPayment)
+        eventData.calculatedEndDate = new Date(loanCalculationPreview.value.endDate)
+          .toISOString()
+          .split('T')[0]
+      } else {
+        // Fallback: use calculated end date from term
+        eventData.calculatedEndDate = formattedEndDate
+      }
+
+      // Add escrow for mortgages
+      if (isMortgageCategory.value && newTransaction.value.escrow) {
+        eventData.escrow = parseFloat(newTransaction.value.escrow)
+      } else {
+        eventData.escrow = null
+      }
+    }
+
+    await eventsStore.createEvent(eventData)
+
+    // Show success notification
+    $q.notify({
+      type: 'positive',
+      message: 'Transaction created successfully',
+      position: 'top',
+    })
+
+    // Reset form
+    newTransaction.value = {
+      name: '',
+      description: '',
+      amount: null,
+      category: '',
+      frequency: 'MONTHLY',
+      type: 'DEBIT',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      scenarioID: '',
+      profileID: '',
+      interest: null,
+      principal: null,
+      loanTerm: '',
+      escrow: null,
+    }
+
+    // Reset loan calculation preview
+    loanCalculationPreview.value = null
+
+    // Refresh calendar data
+    await eventsStore.fetchEventsForMonthByScenario()
+    calendarStore.updateCalendarDays()
+  } catch (error) {
+    console.error('Error saving transaction:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to save transaction',
+      position: 'top',
+    })
+  } finally {
+    isSavingTransaction.value = false
+  }
 }
 
 async function initializeCalendar() {
@@ -346,7 +930,7 @@ watch(
       console.log('=== END SCENARIO CHANGED ===')
     }
   },
-  { immediate: false }
+  { immediate: false },
 )
 
 watch(
@@ -358,73 +942,209 @@ watch(
       }
     }
   },
-  { immediate: false }
+  { immediate: false },
+)
+
+// Initialize transaction form with current profile and scenario when switching to transaction view
+watch(currentView, (newView) => {
+  if (newView === 'transaction' && profile.value && selectedScenario.value) {
+    newTransaction.value.profileID = profile.value.id
+    newTransaction.value.scenarioID = selectedScenario.value.id
+  }
+})
+
+// Watch loan-related fields to trigger calculation
+watch(
+  () => newTransaction.value.amount,
+  () => {
+    if (
+      isLoanCategory.value &&
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
+watch(
+  () => newTransaction.value.interest,
+  () => {
+    if (
+      isLoanCategory.value &&
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
+watch(
+  () => newTransaction.value.principal,
+  () => {
+    if (
+      isLoanCategory.value &&
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
+watch(
+  () => newTransaction.value.loanTerm,
+  () => {
+    // Only use simple calculation if we don't have all fields for API calculation
+    const hasAllFields =
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm &&
+      newTransaction.value.startDate
+
+    if (
+      !hasAllFields &&
+      isLoanCategory.value &&
+      newTransaction.value.startDate &&
+      newTransaction.value.loanTerm
+    ) {
+      calculateEndDateFromTerm()
+    }
+
+    // Trigger full loan calculation (API will calculate correct end date with principal payment)
+    if (
+      isLoanCategory.value &&
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
+watch(
+  () => newTransaction.value.startDate,
+  () => {
+    // Only use simple calculation if we don't have all fields for API calculation
+    const hasAllFields =
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm &&
+      newTransaction.value.startDate
+
+    if (
+      !hasAllFields &&
+      isLoanCategory.value &&
+      newTransaction.value.startDate &&
+      newTransaction.value.loanTerm
+    ) {
+      calculateEndDateFromTerm()
+    }
+
+    // Trigger full loan calculation (API will calculate correct end date with principal payment)
+    if (
+      isLoanCategory.value &&
+      newTransaction.value.amount &&
+      newTransaction.value.interest &&
+      newTransaction.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
 )
 </script>
 
 <style scoped lang="scss">
 .calendar-page {
-  padding: 2rem;
+  padding: 1rem;
   min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
 }
 
-.calendar-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 2rem;
-  max-width: 1600px;
+.calendar-container {
+  max-width: 1400px;
   margin: 0 auto;
 }
 
-.calendar-sidebar {
-  padding: 1.5rem;
-  height: fit-content;
-  position: sticky;
-  top: 2rem;
+.view-header {
+  margin-bottom: 1.5rem;
+}
+
+.view-title {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 1rem 0;
 }
 
 .section-title {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
-  margin: 0 0 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin: 0 0 0.5rem;
 }
 
-.cash-flow-summary {
+.section-description {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 1rem;
+}
+
+// Calendar View Styles
+.calendar-view {
+  .calendar-header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .month-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    min-width: 200px;
+    text-align: center;
+  }
+}
+
+.cash-flow-summary-inline {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
 }
 
 .cash-flow-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &.total {
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-    border-top: 2px solid rgba(255, 255, 255, 0.2);
-    border-bottom: none;
-  }
+  gap: 0.5rem;
 }
 
 .flow-label {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .flow-amount {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 700;
 
   &.positive {
@@ -432,58 +1152,451 @@ watch(
   }
 
   &.negative {
-    color: #f44336;
+    color: #ef4444;
   }
 }
 
-.scenarios-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+// Scenarios View Styles
+.scenarios-view {
+  padding: 0;
+  position: relative;
+  min-height: 100vh;
 }
 
-.scenarios-icon {
-  font-size: 1.5rem;
-  color: rgba(33, 150, 243, 0.8);
-}
-
-.scenarios-subtitle {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.scenario-dropdown-trigger {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 0.75rem;
-  text-align: left;
-  justify-content: space-between;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-}
-
-.calendar-main {
+.background-scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
   overflow: hidden;
 }
 
-.calendar-header {
+.math-equations {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.equation {
+  position: absolute;
+  font-family: 'Times New Roman', serif;
+  font-size: 1.2rem;
+  font-weight: 300;
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #f5576c 75%,
+    #4facfe 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0;
+  transform: scale(0.8);
+  white-space: nowrap;
+  text-shadow:
+    0 0 30px rgba(102, 126, 234, 0.6),
+    0 0 40px rgba(118, 75, 162, 0.4),
+    0 0 50px rgba(240, 147, 251, 0.3);
+}
+
+.equation-1 {
+  top: 15%;
+  left: 10%;
+  animation: equationFade 8s ease-in-out infinite 0s;
+}
+
+.equation-2 {
+  top: 25%;
+  right: 15%;
+  animation: equationFade 8s ease-in-out infinite 1s;
+}
+
+.equation-3 {
+  top: 65%;
+  left: 15%;
+  animation: equationFade 8s ease-in-out infinite 2s;
+}
+
+.equation-4 {
+  top: 85%;
+  right: 15%;
+  animation: equationFade 8s ease-in-out infinite 3s;
+}
+
+@keyframes equationFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) rotate(-2deg);
+  }
+  25% {
+    opacity: 0.4;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1) rotate(1deg);
+  }
+  75% {
+    opacity: 0.4;
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8) rotate(-2deg);
+  }
+}
+
+.scenarios-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.scenarios-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 1.5rem 0 2rem 0;
+  text-align: center;
+  letter-spacing: -0.5px;
+}
+
+.scenarios-content-card {
+  padding: 2rem;
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.scenario-section {
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .section-description {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 1.5rem;
+  }
+}
+
+.scenario-list {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
-.month-title {
-  font-size: 1.8rem;
+.scenario-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(168, 85, 247, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.5);
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    background: rgba(168, 85, 247, 0.25);
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.3);
+  }
+}
+
+.scenario-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a855f7;
+}
+
+.scenario-item-content {
+  flex: 1;
+}
+
+.scenario-item-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.25rem;
+}
+
+.scenario-item-description {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.scenario-item-check {
+  display: flex;
+  align-items: center;
+}
+
+.create-scenario-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+  }
+}
+
+// Transaction View Styles
+.transaction-view {
+  padding: 0;
+  position: relative;
+  min-height: 100vh;
+}
+
+.transaction-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.transaction-title {
+  font-size: 2.5rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 1.5rem 0 2rem 0;
+  text-align: center;
+  letter-spacing: -0.5px;
+}
+
+.transaction-content-card {
+  padding: 3rem 2rem;
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.transaction-section {
+  .section-description {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 2rem;
+    line-height: 1.6;
+  }
+}
+
+.transaction-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.form-section {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  :deep(.q-badge) {
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.save-transaction-btn {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+  }
+}
+
+// Loan Calculation Preview
+.loan-preview-card {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.loan-preview-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.loan-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.loan-preview-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+
+  &.highlight {
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+  }
+}
+
+.loan-preview-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.loan-preview-value {
+  font-size: 0.95rem;
+  color: white;
+  font-weight: 600;
+
+  .highlight & {
+    color: #4caf50;
+    font-size: 1.05rem;
+  }
+}
+
+// Input styling for transaction form
+.transaction-content-card {
+  :deep(.q-field) {
+    .q-field__control {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(168, 85, 247, 0.3);
+      border-radius: 8px;
+      color: white;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(168, 85, 247, 0.5);
+      }
+    }
+
+    .q-field__label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .q-field__native {
+      color: white;
+    }
+
+    .q-field__append {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .q-field__messages {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    .q-field__hint {
+      color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    &.q-field--focused {
+      .q-field__control {
+        border-color: #a855f7;
+        box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+      }
+
+      .q-field__label {
+        color: #a855f7;
+      }
+    }
+  }
+
+  // Make calendar icons white for date inputs
+  :deep(input[type='date']) {
+    &::-webkit-calendar-picker-indicator {
+      filter: invert(1) brightness(1.5) !important;
+      cursor: pointer !important;
+      opacity: 1 !important;
+      background-color: transparent !important;
+    }
+
+    &::-moz-calendar-picker-indicator {
+      filter: invert(1) brightness(1.5) !important;
+    }
+  }
+}
+
+// Additional calendar icon styling at component level
+.transaction-view {
+  :deep(input[type='date']::-webkit-calendar-picker-indicator) {
+    filter: invert(1) brightness(2) !important;
+    cursor: pointer !important;
+  }
 }
 
 .calendar-grid-wrapper {
@@ -585,27 +1698,67 @@ watch(
   color: rgba(255, 255, 255, 0.7);
 }
 
-@media (max-width: 1200px) {
-  .calendar-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-sidebar {
-    position: static;
-  }
-}
-
 @media (max-width: 768px) {
   .calendar-page {
-    padding: 1rem;
+    padding: 0.5rem;
+  }
+
+  .view-title {
+    font-size: 1.5rem;
+  }
+
+  .scenarios-title {
+    font-size: 2rem;
+    margin: 1rem 0 1.5rem 0;
+  }
+
+  .scenarios-content-card {
+    padding: 1.5rem;
   }
 
   .calendar-day-cell {
     min-height: 80px;
   }
 
-  .month-title {
-    font-size: 1.4rem;
+  .calendar-header-controls {
+    .month-title {
+      font-size: 1.2rem;
+      min-width: 150px;
+    }
+  }
+
+  .cash-flow-summary-inline {
+    flex-direction: column;
+  }
+
+  .scenario-item {
+    padding: 0.875rem;
+  }
+
+  .scenario-item-name {
+    font-size: 1rem;
+  }
+
+  .transaction-title {
+    font-size: 2rem;
+    margin: 1rem 0 1.5rem 0;
+  }
+
+  .transaction-content-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .save-transaction-btn {
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .form-section {
+    padding: 1.25rem 0;
+  }
+
+  .section-title {
+    font-size: 1.1rem;
   }
 }
 </style>
