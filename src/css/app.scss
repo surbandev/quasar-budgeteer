@@ -1,15 +1,459 @@
 // draw nav
 .q-drawer {
-    .q-item {
-        opacity: 0.6;
-        &.q-router-link--exact-active {
-            opacity: 1;
-        }
+  .q-item {
+    opacity: 0.6;
+    &.q-router-link--exact-active {
+      opacity: 1;
     }
+  }
 }
 
 // number input
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-    margin-left: 10px;
+  margin-left: 10px;
+}
+
+// Dark theme and glassmorphism styles (matches login/register pages)
+body {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+}
+
+// Glass card styling (matches login/register glassmorphism)
+.glass-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  }
+
+  .q-card__section {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+// Input styling for dark theme
+.q-field {
+  .q-field__control {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+
+    &:before {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    &:hover:before {
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  .q-field__native,
+  .q-field__input {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .q-field__label {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .q-field__prepend,
+  .q-field__append {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// Date input calendar icon - make it white
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(2) !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+}
+
+input[type="date"]::-moz-calendar-picker-indicator {
+  filter: invert(1) brightness(2) !important;
+}
+
+// Button styling
+.q-btn {
+  text-transform: none;
+  font-weight: 500;
+
+  &.q-btn--flat {
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// Utility classes
+.text-positive {
+  color: #4caf50 !important;
+}
+
+.text-negative {
+  color: #f44336 !important;
+}
+
+.bg-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+// Animation helpers
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-in-up {
+  animation: slideInUp 0.3s ease-out;
+}
+
+// Page container styling
+.q-page {
+  background: transparent;
+}
+
+// Stats card styling (for dashboard)
+.stat-card {
+  padding: 1.5rem;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  }
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+  color: rgba(168, 85, 247, 0.8);
+}
+
+.stat-content {
+  h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+
+  &.positive {
+    color: #4caf50;
+  }
+
+  &.negative {
+    color: #f44336;
+  }
+}
+
+// Calendar styling
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  padding: 1rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &.has-events {
+    background: rgba(33, 150, 243, 0.2);
+    border: 1px solid rgba(33, 150, 243, 0.4);
+  }
+
+  &.today {
+    background: rgba(76, 175, 80, 0.2);
+    border: 2px solid #4caf50;
+  }
+}
+
+// Transaction table styling
+.transaction-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  th {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+// Menu/Dropdown styling for dark theme
+.q-menu {
+  background: rgba(30, 30, 35, 0.98) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  color: white !important;
+  padding: 0.5rem !important;
+
+  .q-item {
+    color: rgba(255, 255, 255, 0.9) !important;
+    background: transparent !important;
+    border-radius: 8px !important;
+    margin: 2px 0 !important;
+    padding: 0.75rem 1rem !important;
+    min-height: 44px !important;
+    transition: all 0.2s ease !important;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+      color: white !important;
+    }
+    
+    &:active {
+      background: rgba(255, 255, 255, 0.15) !important;
+      transform: scale(0.98) !important;
+    }
+
+    &.q-item--active,
+    &.q-item--selected {
+      background: rgba(102, 126, 234, 0.2) !important;
+      color: #667eea !important;
+      font-weight: 600 !important;
+    }
+
+    .q-item__label,
+    .q-item__section--main {
+      color: inherit !important;
+      font-size: 1rem !important;
+    }
+  }
+  
+  // Scenario menu override
+  &.scenario-menu {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+// Toggle styling with purple gradient
+.q-toggle {
+  .q-toggle__track {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+  }
+
+  &.q-toggle--truthy .q-toggle__track {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  }
+  
+  .q-toggle__thumb {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// Primary color override for purple theme
+.q-btn--unelevated.q-btn--standard {
+  &.bg-primary {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  }
+}
+
+// Global dialog styling for dark theme - target all possible dialog structures
+.q-dialog .q-dialog__inner .q-card,
+.q-dialog__inner .q-card,
+.dark-dialog .q-card,
+.dark-dialog,
+body .q-dialog .q-card,
+body .q-dialog__inner .q-card {
+  background: rgba(30, 30, 35, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  color: white !important;
+  padding: 2rem !important;
+  min-width: 400px !important;
+  max-width: 500px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+
+  .q-card__section {
+    color: white !important;
+    padding: 0 !important;
+
+    &:first-child {
+      padding-bottom: 1rem !important;
+      margin-bottom: 1rem !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+  }
+
+  .q-dialog__title {
+    color: white !important;
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+    margin: 0 0 1rem 0 !important;
+  }
+
+  .q-dialog__message {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .q-dialog__actions {
+    display: flex !important;
+    gap: 1rem !important;
+    justify-content: flex-end !important;
+    padding-top: 1rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    margin-top: 0 !important;
+
+    .q-btn {
+      padding: 0.75rem 1.5rem !important;
+      border-radius: 12px !important;
+      font-size: 1rem !important;
+      font-weight: 500 !important;
+      transition: all 0.3s ease !important;
+      min-width: 100px !important;
+      text-transform: none !important;
+
+      &.q-btn--flat {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.15) !important;
+          border-color: rgba(255, 255, 255, 0.5) !important;
+          transform: translateY(-2px) !important;
+        }
+      }
+
+      &:not(.q-btn--flat) {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+
+        &:hover {
+          transform: translateY(-3px) !important;
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
+        }
+      }
+    }
+  }
+}
+
+// Mobile responsive dialog styling
+@media (max-width: 768px) {
+  .q-dialog {
+    .q-dialog__inner {
+      padding: 1rem !important;
+
+      .q-card {
+        min-width: calc(100vw - 2rem) !important;
+        max-width: calc(100vw - 2rem) !important;
+        padding: 1.5rem !important;
+
+        .q-dialog__title {
+          font-size: 1.25rem !important;
+        }
+
+        .q-dialog__message {
+          font-size: 0.95rem !important;
+        }
+
+        .q-dialog__actions {
+          flex-direction: column-reverse !important;
+
+          .q-btn {
+            width: 100% !important;
+          }
+        }
+      }
+    }
+  }
 }

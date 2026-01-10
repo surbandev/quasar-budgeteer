@@ -1,4 +1,4 @@
-# Moneyballs (quasar-moneyballs)
+# Budgeteer (quasar-budgeteer)
 
 A Quasar Project
 
