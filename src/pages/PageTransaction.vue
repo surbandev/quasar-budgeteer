@@ -228,13 +228,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useProfileStore } from '../stores/profile'
 import { useConstantsStore } from '../stores/constants'
+import { useCalendarStore } from '../stores/calendar'
 import { showSuccessCheckmark } from '../js/utils'
 
 const router = useRouter()
@@ -244,6 +245,7 @@ const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
 const profileStore = useProfileStore()
 const constantsStore = useConstantsStore()
+const calendarStore = useCalendarStore()
 
 const isLoadingEvent = ref(false)
 const isSaving = ref(false)
@@ -481,9 +483,38 @@ async function removeEvent() {
       if (!eventId) {
         throw new Error('Event ID not found')
       }
+
+      // Delete the event
       await eventsStore.deleteEvent(eventId)
+
+      // Update calendar days to reflect the deletion
+      try {
+        calendarStore.updateCalendarDays()
+      } catch (calendarError) {
+        console.warn('Error updating calendar days:', calendarError)
+        // Don't fail the deletion if calendar update fails
+      }
+
+      // Show success checkmark
       showSuccessCheckmark()
-      router.back()
+
+      // Wait for Vue to finish updating and animations
+      await nextTick()
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      // Navigate back safely
+      try {
+        if (router.currentRoute.value.path === '/transaction') {
+          router.back()
+        } else {
+          // If we can't go back, navigate to calendar
+          router.push('/calendar?view=calendar')
+        }
+      } catch (navError) {
+        console.error('Navigation error:', navError)
+        // Fallback navigation
+        router.push('/calendar?view=calendar')
+      }
     } catch (error) {
       console.error('Error deleting event:', error)
       $q.notify({

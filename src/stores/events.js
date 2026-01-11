@@ -300,7 +300,10 @@ export const useEventsStore = defineStore('events', () => {
       const payload = {
         active: 'active' in eventData ? eventData.active : true,
         amount: eventData.amount,
-        calculatedEndDate: 'calculatedEndDate' in eventData && eventData.calculatedEndDate ? eventData.calculatedEndDate : eventData.endDate,
+        calculatedEndDate:
+          'calculatedEndDate' in eventData && eventData.calculatedEndDate
+            ? eventData.calculatedEndDate
+            : eventData.endDate,
         category: eventData.category,
         description: 'description' in eventData ? eventData.description : '',
         endDate: eventData.endDate,
@@ -317,7 +320,7 @@ export const useEventsStore = defineStore('events', () => {
         startDate: eventData.startDate,
         type: eventData.type,
       }
-      
+
       // Log to verify all fields including nulls are present
       console.log('Store createEvent - payload keys:', Object.keys(payload))
       console.log('Store createEvent - payload (with nulls):', JSON.stringify(payload, null, 2))
@@ -385,10 +388,10 @@ export const useEventsStore = defineStore('events', () => {
         profileID: profile.value.id,
         eventID: eventId,
       }
-      
+
       console.log('Delete event - URL:', url)
       console.log('Delete event - Payload:', payload)
-      
+
       // Try DELETE with request body first (matching scenario delete pattern)
       try {
         await axios.delete(url, {
@@ -402,7 +405,9 @@ export const useEventsStore = defineStore('events', () => {
         } else {
           // If it's not a 404/405, try query parameters
           console.log('Trying query parameters format')
-          await axios.delete(`${url}?scenarioID=${selectedScenario.value.id}&profileID=${profile.value.id}&eventID=${eventId}`)
+          await axios.delete(
+            `${url}?scenarioID=${selectedScenario.value.id}&profileID=${profile.value.id}&eventID=${eventId}`,
+          )
         }
       }
 
@@ -423,15 +428,49 @@ export const useEventsStore = defineStore('events', () => {
       return null
     }
 
+    if (!selectedScenario.value?.id) {
+      console.error('No scenario selected for fetching event')
+      return null
+    }
+
     loading.value = true
     error.value = null
 
     try {
-      // Use the existing endpoint to get all events for the scenario, then filter for the specific event
+      // First, try to get the event from monthlyEvents if available (faster, no API call)
+      if (
+        eventsByMonth.value &&
+        Array.isArray(eventsByMonth.value) &&
+        eventsByMonth.value.length > 0
+      ) {
+        // Check if the event is in the monthly events (which have occurrences structure)
+        for (const eventData of eventsByMonth.value) {
+          if (eventData.event) {
+            const eventId = eventData.event.id || eventData.event._id
+            if (eventId === eventID || eventId === String(eventID)) {
+              // Return the event object with all its properties
+              return eventData.event
+            }
+          }
+        }
+      }
+
+      // If not found in monthly events, try fetching from all events
+      if (events.value && Array.isArray(events.value) && events.value.length > 0) {
+        const event = events.value.find((e) => {
+          const eId = e.id || e._id
+          return eId === eventID || eId === String(eventID)
+        })
+        if (event) {
+          return event
+        }
+      }
+
+      // Fallback: Use the existing endpoint to get all events for the scenario
       const url = `${getAPIURL()}/api/scenario/get-events-for-scenario`
       const response = await axios.get(url, {
         params: {
-          scenarioID: selectedScenario.value?.id,
+          scenarioID: selectedScenario.value.id,
           profileID: profile.value.id,
         },
       })
@@ -441,18 +480,31 @@ export const useEventsStore = defineStore('events', () => {
         return null
       }
 
-      // Find the specific event by ID
-      const event = response.data.find((e) => e.id === eventID || e._id === eventID)
+      // Find the specific event by ID (check both id and _id fields, and handle string/number comparison)
+      const event = response.data.find((e) => {
+        const eId = e.id || e._id
+        return eId === eventID || eId === String(eventID) || String(eId) === String(eventID)
+      })
 
       if (event) {
         return event
       } else {
         console.error('Event not found with ID:', eventID)
+        console.error(
+          'Available event IDs:',
+          response.data.map((e) => e.id || e._id),
+        )
         return null
       }
     } catch (err) {
       console.error('Error fetching event by ID:', err)
       error.value = err.message || 'Failed to fetch event by ID'
+
+      // If it's a 403 error, provide a more helpful message
+      if (err.response?.status === 403) {
+        console.error('403 Forbidden - Check authentication and permissions')
+      }
+
       return null
     } finally {
       loading.value = false
@@ -491,8 +543,7 @@ export const useEventsStore = defineStore('events', () => {
 
     try {
       for (const scenarioId of activeScenarioIds) {
-        const actualScenarioId =
-          scenarioId === 'default' ? selectedScenario.value?.id : scenarioId
+        const actualScenarioId = scenarioId === 'default' ? selectedScenario.value?.id : scenarioId
         if (!actualScenarioId) continue
 
         const monthsToFetch = []
@@ -608,7 +659,7 @@ export const useEventsStore = defineStore('events', () => {
     try {
       const response = await axios.post(
         `${getAPIURL()}/api/scenario/calculate-loan-details`,
-        loanData
+        loanData,
       )
       return response.data
     } catch (err) {

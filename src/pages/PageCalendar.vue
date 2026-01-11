@@ -62,7 +62,9 @@
                     'has-events': date.hasEvents,
                     today: date.isToday,
                     transitioning: isTransitioning,
+                    clickable: date.currentMonth && (!date.events || date.events.length === 0),
                   }"
+                  @click="handleDayClick(date)"
                 >
                   <div class="day-number">{{ date.day }}</div>
                   <div v-if="date.events && date.events.length > 0" class="event-details">
@@ -71,7 +73,7 @@
                       :key="index"
                       class="event-item"
                       :class="event.type === 'CREDIT' ? 'positive' : 'negative'"
-                      @click="goToAddTransaction(event)"
+                      @click.stop="goToAddTransaction(event)"
                     >
                       <div class="event-name">{{ event.name }}</div>
                       <div class="event-amount">${{ getEventDisplayAmount(event) }}</div>
@@ -80,6 +82,56 @@
                 </div>
               </div>
             </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- Upcoming Transactions Component -->
+        <q-card class="glass-card q-mt-lg">
+          <q-card-section>
+            <h3 class="upcoming-title">Upcoming transactions</h3>
+            <div class="upcoming-transactions-list">
+              <div
+                v-for="transaction in upcomingTransactions"
+                :key="transaction.id || transaction._id"
+                class="upcoming-transaction-item"
+              >
+                <div class="transaction-left-section">
+                  <div class="days-remaining-pill">{{ transaction.daysRemaining }} DAYS</div>
+                  <div class="transaction-icon-wrapper">
+                    <div
+                      class="transaction-icon"
+                      :style="{ backgroundColor: getCategoryColor(transaction.category) }"
+                    >
+                      <q-icon
+                        :name="getCategoryIcon(transaction.category)"
+                        size="20px"
+                        color="white"
+                      />
+                    </div>
+                  </div>
+                  <div class="transaction-details">
+                    <div class="transaction-name">
+                      {{ transaction.name || 'Unnamed Transaction' }}
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-amount">
+                  ${{ (getEventDisplayAmount(transaction) || 0).toFixed(2) }}
+                </div>
+              </div>
+              <div v-if="upcomingTransactions.length === 0" class="no-upcoming-transactions">
+                <span>No upcoming transactions for this month</span>
+              </div>
+            </div>
+            <q-btn
+              v-if="upcomingTransactions.length > 0"
+              flat
+              no-caps
+              class="see-all-btn"
+              @click="goToEntries"
+            >
+              See all upcoming transactions
+            </q-btn>
           </q-card-section>
         </q-card>
       </div>
@@ -508,6 +560,59 @@ const hasScenarios = computed(() => scenariosStore.hasScenarios)
 
 const monthlyEvents = computed(() => eventsStore.monthlyEvents)
 
+// Compute upcoming transactions for the selected month
+// Use calendarDays (same data source as the calendar) to ensure consistency
+const upcomingTransactions = computed(() => {
+  if (!calendarDays.value || !Array.isArray(calendarDays.value)) {
+    return []
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  today.setMinutes(0, 0, 0)
+  today.setSeconds(0, 0)
+  today.setMilliseconds(0)
+
+  // Collect all events from calendar days that are in the current month and future
+  const upcomingEvents = []
+
+  calendarDays.value.forEach((day) => {
+    // Only process days in the current month
+    if (!day.currentMonth) return
+
+    if (!day.events || day.events.length === 0) return
+
+    // Create a proper date object from day.date
+    const dayDate = new Date(day.date)
+    dayDate.setHours(0, 0, 0, 0)
+    dayDate.setMinutes(0, 0, 0)
+    dayDate.setSeconds(0, 0)
+    dayDate.setMilliseconds(0)
+
+    // Only include future dates (strictly after today, not including today)
+    if (dayDate > today) {
+      day.events.forEach((event) => {
+        const daysRemaining = Math.ceil((dayDate - today) / (1000 * 60 * 60 * 24))
+
+        upcomingEvents.push({
+          ...event,
+          date: dayDate.toISOString().split('T')[0],
+          daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
+        })
+      })
+    }
+  })
+
+  // Sort by date (earliest first) and limit to 10
+  return upcomingEvents
+    .sort((a, b) => {
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      return dateA - dateB
+    })
+    .slice(0, 10)
+})
+
 const scenarioOptionsForTransaction = computed(() => {
   return allScenarios.value.map((s) => ({
     label: s.name,
@@ -525,10 +630,9 @@ const isMortgageCategory = computed(() => {
 })
 
 function getEventDisplayAmount(event) {
-  if (event.amount !== undefined && event.amount !== null) {
-    return event.amount
-  }
+  if (!event) return 0
 
+  // Check for loan categories first - use monthly_payment instead of total loan amount
   const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
   if (
     loanCategories.includes(event.category) &&
@@ -538,14 +642,121 @@ function getEventDisplayAmount(event) {
     if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
       return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
     }
-    return event.monthly_payment
+    return parseFloat(event.monthly_payment)
   }
-  return event.amount
+
+  // For non-loan categories, use the regular amount
+  const amount = event.amount
+  if (amount !== undefined && amount !== null) {
+    return parseFloat(amount) || 0
+  }
+
+  return 0
+}
+
+function getCategoryIcon(category) {
+  const icons = {
+    HOUSING: 'home',
+    MORTGAGE: 'home',
+    'FOOD & DINING': 'restaurant',
+    'FOOD & DRINKS': 'restaurant',
+    TRANSPORTATION: 'directions_car',
+    ENTERTAINMENT: 'movie',
+    SHOPPING: 'shopping_bag',
+    UTILITIES: 'bolt',
+    UTILITY: 'bolt',
+    HEALTHCARE: 'local_hospital',
+    EDUCATION: 'school',
+    SAVINGS: 'savings',
+    SUBSCRIPTION: 'subscriptions',
+    MISCELLANEOUS: 'category',
+  }
+  return icons[category?.toUpperCase()] || 'receipt'
+}
+
+function getCategoryColor(category) {
+  const colors = {
+    HOUSING: '#9c27b0',
+    MORTGAGE: '#9c27b0',
+    'FOOD & DINING': '#4caf50',
+    'FOOD & DRINKS': '#4caf50',
+    TRANSPORTATION: '#2196f3',
+    ENTERTAINMENT: '#f44336',
+    SHOPPING: '#ff9800',
+    UTILITIES: '#00bcd4',
+    UTILITY: '#00bcd4',
+    HEALTHCARE: '#e91e63',
+    EDUCATION: '#3f51b5',
+    SAVINGS: '#4caf50',
+    SUBSCRIPTION: '#e91e63',
+    MISCELLANEOUS: '#9e9e9e',
+  }
+  return colors[category?.toUpperCase()] || '#9e9e9e'
+}
+
+function goToEntries() {
+  router.push('/entries')
+}
+
+function handleDayClick(date) {
+  // Only handle clicks on days in the current month that have no events
+  if (!date.currentMonth) return
+  if (date.events && date.events.length > 0) return
+
+  // Navigate to transaction view with the selected date
+  const selectedDate = date.date.toISOString().split('T')[0]
+  router.push({
+    path: '/calendar',
+    query: {
+      view: 'transaction',
+      date: selectedDate,
+      profileID: profile.value?.id,
+      scenarioID: selectedScenario.value?.id,
+    },
+  })
 }
 
 function goToAddTransaction(event) {
+  if (!event) {
+    console.error('No event provided to goToAddTransaction')
+    return
+  }
+
+  // Try to get the event ID from various possible fields
+  const eventID = event.id || event._id || event.event?.id || event.event?._id
+
+  if (!eventID) {
+    console.error('Event ID not found in event object:', event)
+    $q.notify({
+      type: 'negative',
+      message: 'Unable to load event details. Event ID not found.',
+      position: 'top',
+    })
+    return
+  }
+
+  if (!profile.value?.id) {
+    console.error('Profile ID not available')
+    $q.notify({
+      type: 'negative',
+      message: 'Profile not set. Please refresh the page.',
+      position: 'top',
+    })
+    return
+  }
+
+  if (!selectedScenario.value?.id) {
+    console.error('Scenario ID not available')
+    $q.notify({
+      type: 'negative',
+      message: 'Scenario not selected. Please select a scenario.',
+      position: 'top',
+    })
+    return
+  }
+
   const query = {
-    eventID: event && event.id ? event.id : undefined,
+    eventID: eventID,
     profileID: profile.value.id,
     scenarioID: selectedScenario.value.id,
   }
@@ -579,8 +790,33 @@ function goToCreateScenarioPage() {
   })
 }
 
-function handleScenarioSelection(scenario) {
-  scenariosStore.selectScenario(scenario)
+async function handleScenarioSelection(scenario) {
+  if (!scenario) {
+    console.error('No scenario provided to handleScenarioSelection')
+    return
+  }
+
+  try {
+    // Select the scenario
+    await scenariosStore.selectScenario(scenario)
+
+    // Fetch events for the newly selected scenario
+    await eventsStore.fetchEventsForMonthByScenario()
+
+    // Update the calendar days to reflect the new scenario's events
+    calendarStore.updateCalendarDays()
+
+    console.log('=== SCENARIO SELECTED ===')
+    console.log('Selected Scenario:', scenario.name || 'None')
+    console.log('=== END SCENARIO SELECTED ===')
+  } catch (error) {
+    console.error('Error selecting scenario:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to switch scenario. Please try again.',
+      position: 'top',
+    })
+  }
 }
 
 function handleCreateScenario() {
@@ -892,6 +1128,12 @@ watch(currentView, (newView) => {
   if (newView === 'transaction' && profile.value && selectedScenario.value) {
     newTransaction.value.profileID = profile.value.id
     newTransaction.value.scenarioID = selectedScenario.value.id
+
+    // Set the start date from query parameter if provided
+    const dateFromQuery = route.query.date
+    if (dateFromQuery) {
+      newTransaction.value.startDate = dateFromQuery
+    }
   }
 })
 
@@ -1585,6 +1827,19 @@ watch(
     border: 2px solid #4caf50;
   }
 
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+
   &:not(.current-month) {
     opacity: 0.4;
   }
@@ -1701,6 +1956,175 @@ watch(
 
   .section-title {
     font-size: 1.1rem;
+  }
+}
+
+// Upcoming Transactions Component Styles
+.upcoming-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 1.5rem 0;
+  letter-spacing: -0.3px;
+}
+
+.upcoming-transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.upcoming-transaction-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+  position: relative;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.transaction-left-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  position: relative;
+}
+
+.days-remaining-pill {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+}
+
+.transaction-icon-wrapper {
+  position: relative;
+  margin-left: 0.5rem;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 100%;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.2) 0px,
+      rgba(255, 255, 255, 0.2) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+}
+
+.transaction-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.transaction-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.transaction-name {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-amount {
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-left: 1rem;
+}
+
+.no-upcoming-transactions {
+  padding: 2rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.95rem;
+}
+
+.see-all-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: rgba(40, 40, 45, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(50, 50, 55, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+// Mobile optimization for upcoming transactions
+@media (max-width: 768px) {
+  .upcoming-title {
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .upcoming-transaction-item {
+    padding: 0.875rem 0;
+  }
+
+  .transaction-left-section {
+    gap: 0.75rem;
+  }
+
+  .days-remaining-pill {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.6rem;
+    min-width: 50px;
+  }
+
+  .transaction-icon {
+    width: 36px;
+    height: 36px;
+
+    .q-icon {
+      font-size: 18px !important;
+    }
+  }
+
+  .transaction-name {
+    font-size: 0.9rem;
+  }
+
+  .transaction-amount {
+    font-size: 0.9rem;
   }
 }
 </style>

@@ -3,51 +3,33 @@
     <div class="tools-container">
       <h2 class="tools-title">Tools</h2>
 
-      <div class="tools-content-card glass-card">
-        <div class="tools-list">
-          <q-btn
-            flat
-            no-caps
-            class="tool-item"
-            @click="goToFeedback"
-          >
-            <q-icon name="chat_bubble" size="md" />
-            <span class="tool-label">Feedback</span>
-            <q-icon name="chevron_right" class="tool-arrow" />
-          </q-btn>
+      <div class="tools-grid">
+        <div class="tool-bubble" @click="goToFeedback">
+          <div class="icon-circle icon-feedback">
+            <q-icon name="chat_bubble" size="48px" />
+          </div>
+          <span class="tool-name">Feedback</span>
+        </div>
 
-          <q-btn
-            flat
-            no-caps
-            class="tool-item"
-            @click="goToProfileSettings"
-          >
-            <q-icon name="person" size="md" />
-            <span class="tool-label">Profile Settings</span>
-            <q-icon name="chevron_right" class="tool-arrow" />
-          </q-btn>
+        <div class="tool-bubble" @click="goToProfileSettings">
+          <div class="icon-circle icon-profile">
+            <q-icon name="person" size="48px" />
+          </div>
+          <span class="tool-name">Profile Settings</span>
+        </div>
 
-          <q-btn
-            flat
-            no-caps
-            class="tool-item"
-            @click="goToUserSettings"
-          >
-            <q-icon name="settings" size="md" />
-            <span class="tool-label">User Settings</span>
-            <q-icon name="chevron_right" class="tool-arrow" />
-          </q-btn>
+        <div class="tool-bubble" @click="goToUserSettings">
+          <div class="icon-circle icon-settings">
+            <q-icon name="settings" size="48px" />
+          </div>
+          <span class="tool-name">User Settings</span>
+        </div>
 
-          <q-btn
-            flat
-            no-caps
-            class="tool-item logout-item"
-            @click="handleLogout"
-          >
-            <q-icon name="logout" size="md" />
-            <span class="tool-label">Sign Out</span>
-            <q-icon name="chevron_right" class="tool-arrow" />
-          </q-btn>
+        <div class="tool-bubble tool-bubble-logout" @click="handleLogout">
+          <div class="icon-circle icon-logout">
+            <q-icon name="logout" size="48px" />
+          </div>
+          <span class="tool-name">Sign Out</span>
         </div>
       </div>
     </div>
@@ -91,122 +73,181 @@ async function handleLogout() {
 
 <style scoped lang="scss">
 .tools-page {
-  padding: 1rem;
+  padding: 2rem 1rem;
   min-height: 100vh;
   background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .tools-container {
-  max-width: 700px;
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  padding: 1rem;
 }
 
 .tools-title {
   font-size: 2.5rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 1.5rem 0 2rem 0;
+  color: white;
+  margin: 0 0 3rem 0;
   text-align: center;
   letter-spacing: -0.5px;
 }
 
-.tools-content-card {
-  padding: 2rem;
-  background: rgba(30, 30, 30, 0.8);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 3rem 2rem;
+  justify-items: center;
+  padding: 2rem 1rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.tools-list {
+.tool-bubble {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.tool-item {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  border-radius: 12px;
-  color: white;
+  cursor: pointer;
   transition: all 0.3s ease;
-  width: 100%;
+  padding: 1rem;
 
   &:hover {
-    background: rgba(168, 85, 247, 0.15);
-    border-color: rgba(168, 85, 247, 0.4);
-    transform: translateX(4px);
+    transform: translateY(-8px);
+
+    .icon-circle {
+      transform: scale(1.1);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .tool-name {
+      color: rgba(255, 255, 255, 1);
+    }
   }
+
+  &:active {
+    transform: translateY(-4px);
+  }
+}
+
+.icon-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 
   .q-icon {
-    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
   }
 
-  &.logout-item {
-    margin-top: 1rem;
-    border-color: rgba(168, 85, 247, 0.4);
-    background: rgba(168, 85, 247, 0.1);
-    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
-
-    &:hover {
-      background: rgba(168, 85, 247, 0.2);
-      border-color: rgba(168, 85, 247, 0.6);
-      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
-    }
-
+  &.icon-feedback {
     .q-icon {
-      color: #a855f7;
+      color: #2196f3;
     }
+  }
 
-    .tool-label {
-      color: #a855f7;
+  &.icon-profile {
+    .q-icon {
+      color: #9c27b0;
+    }
+  }
+
+  &.icon-settings {
+    .q-icon {
+      color: #00bcd4;
+    }
+  }
+
+  &.icon-logout {
+    .q-icon {
+      color: #f44336;
     }
   }
 }
 
-.tool-label {
-  flex: 1;
-  text-align: left;
-  margin-left: 1rem;
+.tool-name {
+  color: rgba(255, 255, 255, 0.9);
   font-size: 1rem;
   font-weight: 500;
-  color: white;
+  text-align: center;
+  transition: color 0.3s ease;
+  white-space: nowrap;
 }
 
-.tool-arrow {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 1.25rem;
+.tool-bubble-logout {
+  .icon-circle {
+    background: rgba(244, 67, 54, 0.1);
+    border: 2px solid rgba(244, 67, 54, 0.3);
+
+    .q-icon {
+      color: #f44336;
+    }
+  }
+
+  &:hover {
+    .icon-circle {
+      background: rgba(244, 67, 54, 0.2);
+      border-color: rgba(244, 67, 54, 0.5);
+      box-shadow: 0 12px 40px rgba(244, 67, 54, 0.3);
+    }
+  }
 }
 
 @media (max-width: 768px) {
-  .tools-container {
-    padding: 0.5rem;
+  .tools-page {
+    padding: 1.5rem 0.5rem;
   }
 
   .tools-title {
     font-size: 2rem;
-    margin: 1rem 0 1.5rem 0;
+    margin: 0 0 2rem 0;
   }
 
-  .tools-content-card {
-    padding: 1.5rem;
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5rem 1.5rem;
+    padding: 1rem 0.5rem;
   }
 
-  .tool-item {
-    padding: 1rem 1.25rem;
+  .icon-circle {
+    width: 100px;
+    height: 100px;
+
+    .q-icon {
+      font-size: 40px !important;
+    }
   }
 
-  .tool-label {
-    font-size: 0.95rem;
+  .tool-name {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem 1rem;
+  }
+
+  .icon-circle {
+    width: 90px;
+    height: 90px;
+
+    .q-icon {
+      font-size: 36px !important;
+    }
+  }
+
+  .tool-name {
+    font-size: 0.85rem;
   }
 }
 </style>
