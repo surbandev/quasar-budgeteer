@@ -219,6 +219,34 @@ const monthlySavings = computed(() => {
 
 const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
 
+// Helper function to get the maximum days in a month
+// month should be 1-12 (not 0-11)
+function getMaxDaysInMonth(month, year) {
+  if (month === null || year === null) return 31
+  // month is 1-12, so we use month (which becomes month index) to get last day of that month
+  return new Date(year, month, 0).getDate()
+}
+
+// Validate and adjust start day when month or year changes
+watch([startMonth, startYear], () => {
+  if (startMonth.value !== null && startYear.value !== null && startDay.value !== null) {
+    const maxDays = getMaxDaysInMonth(startMonth.value, startYear.value)
+    if (startDay.value > maxDays) {
+      startDay.value = maxDays
+    }
+  }
+})
+
+// Validate and adjust end day when month or year changes
+watch([endMonth, endYear], () => {
+  if (endMonth.value !== null && endYear.value !== null && endDay.value !== null) {
+    const maxDays = getMaxDaysInMonth(endMonth.value, endYear.value)
+    if (endDay.value > maxDays) {
+      endDay.value = maxDays
+    }
+  }
+})
+
 function initializeDateRangeToCurrentMonth() {
   const now = new Date()
   const year = now.getFullYear()
@@ -251,12 +279,25 @@ async function updateFilteredData() {
   // Ensure values are numbers (defensive check)
   const startMonthNum =
     typeof startMonth.value === 'number' ? startMonth.value : parseInt(startMonth.value)
-  const startDayNum = typeof startDay.value === 'number' ? startDay.value : parseInt(startDay.value)
+  let startDayNum = typeof startDay.value === 'number' ? startDay.value : parseInt(startDay.value)
   const startYearNum =
     typeof startYear.value === 'number' ? startYear.value : parseInt(startYear.value)
   const endMonthNum = typeof endMonth.value === 'number' ? endMonth.value : parseInt(endMonth.value)
-  const endDayNum = typeof endDay.value === 'number' ? endDay.value : parseInt(endDay.value)
+  let endDayNum = typeof endDay.value === 'number' ? endDay.value : parseInt(endDay.value)
   const endYearNum = typeof endYear.value === 'number' ? endYear.value : parseInt(endYear.value)
+
+  // Validate and clamp days to maximum days in the selected month
+  const startMaxDays = getMaxDaysInMonth(startMonthNum, startYearNum)
+  if (startDayNum > startMaxDays) {
+    startDayNum = startMaxDays
+    startDay.value = startMaxDays
+  }
+
+  const endMaxDays = getMaxDaysInMonth(endMonthNum, endYearNum)
+  if (endDayNum > endMaxDays) {
+    endDayNum = endMaxDays
+    endDay.value = endMaxDays
+  }
 
   const startDate = new Date(Date.UTC(startYearNum, startMonthNum - 1, startDayNum))
   const endDate = new Date(Date.UTC(endYearNum, endMonthNum - 1, endDayNum))
