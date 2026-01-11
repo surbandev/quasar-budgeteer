@@ -1,5 +1,17 @@
 <template>
   <q-page class="tools-page">
+    <!-- Background animations -->
+    <div class="background-scene">
+      <div class="stars"></div>
+
+      <div class="math-equations">
+        <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
+        <div class="equation equation-2">e^(iπ) + 1 = 0</div>
+        <div class="equation equation-3">∇ × E = -∂B/∂t</div>
+        <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
+      </div>
+    </div>
+
     <div class="tools-container">
       <h2 class="tools-title">Tools</h2>
 
@@ -75,16 +87,109 @@ async function handleLogout() {
 .tools-page {
   padding: 2rem 1rem;
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-start;
   justify-content: center;
+}
+
+.background-scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+}
+
+.stars {
+  display: none;
+}
+
+.math-equations {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.equation {
+  position: absolute;
+  font-family: 'Times New Roman', serif;
+  font-size: 1.2rem;
+  font-weight: 300;
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #f5576c 75%,
+    #4facfe 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0;
+  transform: scale(0.8);
+  white-space: nowrap;
+  text-shadow:
+    0 0 30px rgba(102, 126, 234, 0.6),
+    0 0 40px rgba(118, 75, 162, 0.4),
+    0 0 50px rgba(240, 147, 251, 0.3);
+}
+
+.equation-1 {
+  top: 15%;
+  left: 10%;
+  animation: equationFade 8s ease-in-out infinite 0s;
+}
+.equation-2 {
+  top: 25%;
+  right: 15%;
+  animation: equationFade 8s ease-in-out infinite 1s;
+}
+.equation-3 {
+  top: 65%;
+  left: 15%;
+  animation: equationFade 8s ease-in-out infinite 2s;
+}
+.equation-4 {
+  top: 85%;
+  right: 15%;
+  animation: equationFade 8s ease-in-out infinite 3s;
+}
+
+@keyframes equationFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) rotate(-2deg);
+  }
+  25% {
+    opacity: 0.4;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1) rotate(1deg);
+  }
+  75% {
+    opacity: 0.4;
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8) rotate(-2deg);
+  }
 }
 
 .tools-container {
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
+  position: relative;
+  z-index: 2;
 }
 
 .tools-title {

@@ -148,10 +148,16 @@ function onTabChange(tabName) {
 
 function onBottomTabChange(tabName) {
   if (tabName === 'overview') {
-    router.push('/dashboard')
+    if (route.path !== '/dashboard') {
+      router.push('/dashboard')
+    }
   } else if (tabName === 'budget') {
-    router.push('/calendar?view=calendar')
+    if (route.path !== '/calendar' || route.query.view !== 'calendar') {
+      router.push('/calendar?view=calendar')
+    }
   } else if (tabName === 'tools') {
+    // Always navigate to /tools, even if already there
+    // This allows re-clicking the tools tab after navigating away
     router.push('/tools')
   }
 }
@@ -196,9 +202,13 @@ watch(
     else if (newPath === '/tools') {
       bottomTab.value = 'tools'
     }
-    // Other routes (feedback, settings, etc.) - keep current bottom tab
+    // Other routes (feedback, settings, etc.) - reset to overview so tools tab can be clicked again
     else {
-      // Don't change bottomTab for other routes
+      // Reset bottomTab for other routes so tools tab can be clicked again when returning
+      // Only reset if currently on tools to avoid unnecessary changes
+      if (bottomTab.value === 'tools') {
+        bottomTab.value = 'overview'
+      }
     }
   },
   { immediate: true },
