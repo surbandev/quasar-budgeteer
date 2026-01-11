@@ -457,3 +457,41 @@ body .q-dialog__inner .q-card {
     }
   }
 }
+
+// Success checkmark overlay
+.success-checkmark-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  &.show {
+    opacity: 1;
+  }
+
+  .success-checkmark-icon {
+    font-size: 120px;
+    color: #4caf50;
+    animation: scaleIn 0.3s ease-out;
+    text-shadow: 0 0 30px rgba(76, 175, 80, 0.5);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

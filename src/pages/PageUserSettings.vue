@@ -333,6 +333,7 @@ async function saveSettings() {
     $q.notify({
       type: 'positive',
       message: 'Settings updated successfully',
+      timeout: 2000,
       position: 'top',
     })
 

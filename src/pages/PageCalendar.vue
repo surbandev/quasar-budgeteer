@@ -760,6 +760,7 @@ async function saveTransaction() {
       type: 'positive',
       message: 'Transaction created successfully',
       position: 'top',
+      timeout: 2000,
     })
 
     // Reset form

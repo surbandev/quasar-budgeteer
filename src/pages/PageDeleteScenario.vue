@@ -94,6 +94,7 @@ async function deleteScenario() {
     $q.notify({
       type: 'positive',
       message: 'Scenario deleted successfully',
+      timeout: 2000,
       position: 'top',
     })
 

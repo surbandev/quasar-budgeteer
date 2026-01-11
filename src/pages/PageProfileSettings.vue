@@ -203,6 +203,7 @@ async function saveProfile() {
         type: 'positive',
         message: 'Profile updated successfully',
         position: 'top',
+        timeout: 2000,
       })
     } else {
       await profileStore.addProfile(profileData)
@@ -210,6 +211,7 @@ async function saveProfile() {
         type: 'positive',
         message: 'Profile added successfully',
         position: 'top',
+        timeout: 2000,
       })
     }
     closeDialog()

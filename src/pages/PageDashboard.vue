@@ -398,6 +398,7 @@ async function deleteScenario(scenario) {
         type: 'positive',
         message: 'Scenario deleted successfully',
         position: 'top',
+        timeout: 2000,
       })
     } catch (error) {
       console.error('Error deleting scenario:', error)

@@ -99,6 +99,7 @@ async function createScenario() {
       type: 'positive',
       message: 'Scenario created successfully',
       position: 'top',
+      timeout: 2000,
     })
 
     router.back()

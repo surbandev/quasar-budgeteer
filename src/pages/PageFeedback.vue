@@ -127,6 +127,7 @@ async function submitFeedback() {
       type: 'positive',
       message: 'Thank you for your feedback!',
       position: 'top',
+      timeout: 2000,
     })
 
     // Reset form

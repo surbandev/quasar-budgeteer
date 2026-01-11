@@ -227,6 +227,7 @@ function handleCreateAccount() {
     $q.notify({
       type: 'positive',
       message: 'Account created successfully!',
+      timeout: 2000,
       position: 'top',
     })
     isLoading.value = false

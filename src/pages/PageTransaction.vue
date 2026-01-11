@@ -235,6 +235,7 @@ import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useProfileStore } from '../stores/profile'
 import { useConstantsStore } from '../stores/constants'
+import { showSuccessCheckmark } from '../js/utils'
 
 const router = useRouter()
 const route = useRoute()
@@ -419,11 +420,7 @@ async function saveEvent() {
       }
 
       await eventsStore.updateEvent(eventID, updatePayload)
-      $q.notify({
-        type: 'positive',
-        message: 'Transaction updated successfully',
-        position: 'top',
-      })
+      showSuccessCheckmark()
     } else {
       // Creating new event - explicitly set ALL 18 fields, use null for empty values (matching original app)
       const createPayload = {
@@ -453,11 +450,7 @@ async function saveEvent() {
       console.log('Keys:', Object.keys(createPayload).length, 'fields')
       console.log('Payload:', JSON.stringify(createPayload, null, 2))
       await eventsStore.createEvent(createPayload)
-      $q.notify({
-        type: 'positive',
-        message: 'Transaction created successfully',
-        position: 'top',
-      })
+      showSuccessCheckmark()
     }
 
     router.back()
@@ -489,11 +482,7 @@ async function removeEvent() {
         throw new Error('Event ID not found')
       }
       await eventsStore.deleteEvent(eventId)
-      $q.notify({
-        type: 'positive',
-        message: 'Transaction deleted successfully',
-        position: 'top',
-      })
+      showSuccessCheckmark()
       router.back()
     } catch (error) {
       console.error('Error deleting event:', error)
