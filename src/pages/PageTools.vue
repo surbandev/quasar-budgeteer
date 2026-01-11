@@ -17,30 +17,22 @@
 
       <div class="tools-grid">
         <div class="tool-bubble" @click="goToFeedback">
-          <div class="icon-circle icon-feedback">
-            <q-icon name="chat_bubble" size="48px" />
-          </div>
+          <q-icon name="chat_bubble" class="tool-icon icon-feedback" />
           <span class="tool-name">Feedback</span>
         </div>
 
         <div class="tool-bubble" @click="goToProfileSettings">
-          <div class="icon-circle icon-profile">
-            <q-icon name="person" size="48px" />
-          </div>
+          <q-icon name="person" class="tool-icon icon-profile" />
           <span class="tool-name">Profile Settings</span>
         </div>
 
         <div class="tool-bubble" @click="goToUserSettings">
-          <div class="icon-circle icon-settings">
-            <q-icon name="settings" size="48px" />
-          </div>
+          <q-icon name="settings" class="tool-icon icon-settings" />
           <span class="tool-name">User Settings</span>
         </div>
 
         <div class="tool-bubble tool-bubble-logout" @click="handleLogout">
-          <div class="icon-circle icon-logout">
-            <q-icon name="logout" size="48px" />
-          </div>
+          <q-icon name="logout" class="tool-icon icon-logout" />
           <span class="tool-name">Sign Out</span>
         </div>
       </div>
@@ -222,9 +214,8 @@ async function handleLogout() {
   &:hover {
     transform: translateY(-8px);
 
-    .icon-circle {
-      transform: scale(1.1);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    .tool-icon {
+      transform: scale(1.15);
     }
 
     .tool-name {
@@ -237,44 +228,25 @@ async function handleLogout() {
   }
 }
 
-.icon-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.tool-icon {
+  font-size: 96px !important;
   margin-bottom: 1rem;
   transition: all 0.3s ease;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-
-  .q-icon {
-    transition: all 0.3s ease;
-  }
 
   &.icon-feedback {
-    .q-icon {
-      color: #2196f3;
-    }
+    color: #2196f3;
   }
 
   &.icon-profile {
-    .q-icon {
-      color: #9c27b0;
-    }
+    color: #9c27b0;
   }
 
   &.icon-settings {
-    .q-icon {
-      color: #00bcd4;
-    }
+    color: #00bcd4;
   }
 
   &.icon-logout {
-    .q-icon {
-      color: #f44336;
-    }
+    color: #f44336;
   }
 }
 
@@ -288,21 +260,8 @@ async function handleLogout() {
 }
 
 .tool-bubble-logout {
-  .icon-circle {
-    background: rgba(244, 67, 54, 0.1);
-    border: 2px solid rgba(244, 67, 54, 0.3);
-
-    .q-icon {
-      color: #f44336;
-    }
-  }
-
-  &:hover {
-    .icon-circle {
-      background: rgba(244, 67, 54, 0.2);
-      border-color: rgba(244, 67, 54, 0.5);
-      box-shadow: 0 12px 40px rgba(244, 67, 54, 0.3);
-    }
+  .tool-icon {
+    color: #f44336;
   }
 }
 
@@ -322,13 +281,8 @@ async function handleLogout() {
     padding: 1rem 0.5rem;
   }
 
-  .icon-circle {
-    width: 100px;
-    height: 100px;
-
-    .q-icon {
-      font-size: 40px !important;
-    }
+  .tool-icon {
+    font-size: 72px !important;
   }
 
   .tool-name {
@@ -342,13 +296,8 @@ async function handleLogout() {
     gap: 2rem 1rem;
   }
 
-  .icon-circle {
-    width: 90px;
-    height: 90px;
-
-    .q-icon {
-      font-size: 36px !important;
-    }
+  .tool-icon {
+    font-size: 64px !important;
   }
 
   .tool-name {

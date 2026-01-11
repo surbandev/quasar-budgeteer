@@ -175,7 +175,8 @@ async function handleLogin() {
   clearPasswordError()
 
   try {
-    await authStore.login(username.value.trim(), password.value)
+    // Convert username to lowercase before submitting
+    await authStore.login(username.value.trim().toLowerCase(), password.value)
 
     try {
       await profileStore.fetchProfiles()

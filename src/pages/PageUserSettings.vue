@@ -28,7 +28,7 @@
               class="form-input"
               borderless
               dense
-              readonly
+              @update:model-value="handleUsernameInput"
             />
           </div>
 
@@ -250,6 +250,13 @@ const userSettings = ref({
 
 const themeOptions = computed(() => constantsStore.getThemeOptions)
 
+function handleUsernameInput(value) {
+  // Convert to lowercase only - prevent uppercase letters
+  if (value) {
+    userSettings.value.username = value.toLowerCase()
+  }
+}
+
 async function loadUserSettings() {
   isLoading.value = true
   try {
@@ -317,7 +324,7 @@ async function saveSettings() {
     }
 
     const updateData = {
-      username: userSettings.value.username,
+      username: userSettings.value.username.toLowerCase(),
       password: userSettings.value.newPassword,
       email: userSettings.value.email,
       subscriptionLevel: userSettings.value.subscriptionLevel,

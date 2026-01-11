@@ -128,6 +128,7 @@
                     class="form-input"
                     borderless
                     dense
+                    @update:model-value="handleUsernameInput"
                   />
                 </div>
                 <div class="form-group">
@@ -217,6 +218,13 @@ const isLoading = ref(false)
 
 function handleContinue() {
   step.value = 2
+}
+
+function handleUsernameInput(value) {
+  // Convert to lowercase only - prevent uppercase letters
+  if (value) {
+    username.value = value.toLowerCase()
+  }
 }
 
 function handleCreateAccount() {
