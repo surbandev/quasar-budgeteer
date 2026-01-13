@@ -15,25 +15,23 @@
     <div class="tools-container">
       <h2 class="tools-title">Tools</h2>
 
-      <div class="tools-grid">
-        <div class="tool-bubble" @click="goToFeedback">
-          <q-icon name="chat_bubble" class="tool-icon icon-feedback" />
-          <span class="tool-name">Feedback</span>
-        </div>
+      <div class="tools-layout">
+        <!-- Tools row: Profile Settings, User Settings, Feedback -->
+        <div class="tools-top-row">
+          <div class="tool-bubble" @click="goToProfileSettings">
+            <q-icon name="person" class="tool-icon" />
+            <span class="tool-name">Profile Settings</span>
+          </div>
 
-        <div class="tool-bubble" @click="goToProfileSettings">
-          <q-icon name="person" class="tool-icon icon-profile" />
-          <span class="tool-name">Profile Settings</span>
-        </div>
+          <div class="tool-bubble" @click="goToUserSettings">
+            <q-icon name="settings" class="tool-icon" />
+            <span class="tool-name">User Settings</span>
+          </div>
 
-        <div class="tool-bubble" @click="goToUserSettings">
-          <q-icon name="settings" class="tool-icon icon-settings" />
-          <span class="tool-name">User Settings</span>
-        </div>
-
-        <div class="tool-bubble tool-bubble-logout" @click="handleLogout">
-          <q-icon name="logout" class="tool-icon icon-logout" />
-          <span class="tool-name">Sign Out</span>
+          <div class="tool-bubble" @click="goToFeedback">
+            <q-icon name="chat_bubble" class="tool-icon" />
+            <span class="tool-name">Feedback</span>
+          </div>
         </div>
       </div>
     </div>
@@ -42,12 +40,8 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { useProfileStore } from '../stores/profile'
-import { useCalendarStore } from '../stores/calendar'
 
 const router = useRouter()
-const profileStore = useProfileStore()
-const calendarStore = useCalendarStore()
 
 function goToFeedback() {
   router.push('/feedback')
@@ -59,19 +53,6 @@ function goToProfileSettings() {
 
 function goToUserSettings() {
   router.push('/user-settings')
-}
-
-async function handleLogout() {
-  try {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userID')
-    await profileStore.resetCurrentProfile()
-    await calendarStore.resetForNewUser()
-    router.push('/login')
-  } catch (error) {
-    console.error('Error during logout:', error)
-    router.push('/login')
-  }
 }
 </script>
 
@@ -193,14 +174,23 @@ async function handleLogout() {
   letter-spacing: -0.5px;
 }
 
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 3rem 2rem;
-  justify-items: center;
+.tools-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  align-items: center;
   padding: 2rem 1rem;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
+}
+
+.tools-top-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4rem;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .tool-bubble {
@@ -232,22 +222,7 @@ async function handleLogout() {
   font-size: 96px !important;
   margin-bottom: 1rem;
   transition: all 0.3s ease;
-
-  &.icon-feedback {
-    color: #2196f3;
-  }
-
-  &.icon-profile {
-    color: #9c27b0;
-  }
-
-  &.icon-settings {
-    color: #00bcd4;
-  }
-
-  &.icon-logout {
-    color: #f44336;
-  }
+  color: white;
 }
 
 .tool-name {
@@ -259,9 +234,15 @@ async function handleLogout() {
   white-space: nowrap;
 }
 
-.tool-bubble-logout {
-  .tool-icon {
-    color: #f44336;
+// Desktop optimizations
+@media (min-width: 1024px) {
+  .tools-layout {
+    gap: 5rem;
+    padding: 2rem;
+  }
+
+  .tools-top-row {
+    gap: 6rem;
   }
 }
 
@@ -275,10 +256,14 @@ async function handleLogout() {
     margin: 0 0 2rem 0;
   }
 
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2.5rem 1.5rem;
+  .tools-layout {
+    gap: 3rem;
     padding: 1rem 0.5rem;
+  }
+
+  .tools-top-row {
+    gap: 2rem;
+    flex-wrap: wrap;
   }
 
   .tool-icon {
@@ -291,9 +276,8 @@ async function handleLogout() {
 }
 
 @media (max-width: 480px) {
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2rem 1rem;
+  .tools-top-row {
+    gap: 1.5rem;
   }
 
   .tool-icon {

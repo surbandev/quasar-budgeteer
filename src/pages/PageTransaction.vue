@@ -508,7 +508,7 @@ async function removeEvent() {
           router.back()
         } else {
           // If we can't go back, navigate to calendar
-          router.push('/calendar?view=calendar')
+          router.push('/budget?view=calendar')
         }
       } catch (navError) {
         console.error('Navigation error:', navError)
@@ -592,7 +592,7 @@ watch(
   align-items: flex-start;
   justify-content: center;
   padding-top: 1rem;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 }
 
 .background-scene {
@@ -692,6 +692,7 @@ watch(
   width: 100%;
   padding: 0 2rem 2rem;
   z-index: 2;
+  margin: 0 auto;
 }
 
 .form-title {
@@ -708,9 +709,9 @@ watch(
 
 .transaction-card {
   width: 100%;
-  background: rgba(30, 30, 30, 0.8);
+  background: var(--bg-dark);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid var(--color-primary-border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   border-radius: 16px;
 
@@ -721,7 +722,7 @@ watch(
 
 .form-section {
   padding: 1.5rem 0;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+  border-bottom: 1px solid var(--color-primary-border);
 
   &:last-child {
     border-bottom: none;
@@ -745,7 +746,7 @@ watch(
 .section-title {
   font-size: 1.2rem;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
 }
 
 .form-actions {
@@ -753,7 +754,7 @@ watch(
   align-items: center;
   gap: 1rem;
   padding-top: 2rem;
-  border-top: 1px solid rgba(168, 85, 247, 0.2);
+  border-top: 1px solid var(--color-primary-border);
 
   :deep(.q-btn) {
     flex: 1;
@@ -781,13 +782,13 @@ watch(
     }
 
     &[color='negative'] {
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      color: white;
+      background: var(--bg-glass);
+      border: 2px solid var(--border-primary);
+      color: var(--text-primary);
 
       &:hover {
-        background: rgba(255, 255, 255, 0.15);
-        border-color: rgba(255, 255, 255, 0.5);
+        background: var(--bg-glass-hover);
+        border-color: var(--border-primary);
         transform: translateY(-2px);
       }
     }
@@ -797,41 +798,88 @@ watch(
 // Input styling
 :deep(.q-field) {
   .q-field__control {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(168, 85, 247, 0.3);
+    background: var(--bg-glass);
+    border-color: var(--color-primary-border);
     border-radius: 8px;
-    color: white;
+    color: var(--text-primary);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(168, 85, 247, 0.5);
+      background: var(--bg-glass-hover);
+      border-color: var(--color-primary-border);
     }
   }
 
   .q-field__label {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-secondary);
   }
 
   .q-field__native {
-    color: white;
+    color: var(--text-primary);
   }
 
   .q-field__messages {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: var(--text-secondary) !important;
   }
 
   .q-field__hint {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--text-tertiary) !important;
   }
 
   &.q-field--focused {
     .q-field__control {
-      border-color: #a855f7;
-      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--color-primary-light);
     }
 
     .q-field__label {
-      color: #a855f7;
+      color: var(--color-primary);
+    }
+  }
+}
+
+// Tablet and desktop optimizations
+@media (min-width: 1024px) {
+  .transaction-page {
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Make container wider on desktop with fluid scaling
+  .transaction-container {
+    max-width: min(90vw, 1200px);
+    width: 100%;
+    padding: 0 clamp(1.5rem, 2vw, 2.5rem) clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Make content boxes wider to fill space better with fluid padding
+  .transaction-card {
+    :deep(.q-card__section) {
+      padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+    }
+  }
+}
+
+// Large desktop screens (1440px+)
+@media (min-width: 1440px) {
+  .transaction-container {
+    max-width: min(92vw, 1400px);
+  }
+
+  .transaction-card {
+    :deep(.q-card__section) {
+      padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+    }
+  }
+}
+
+// Extra large screens (1920px+)
+@media (min-width: 1920px) {
+  .transaction-container {
+    max-width: min(94vw, 1600px);
+  }
+
+  .transaction-card {
+    :deep(.q-card__section) {
+      padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
     }
   }
 }

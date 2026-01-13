@@ -563,7 +563,7 @@ function handleDayClick(date) {
   // Navigate to transaction view with the selected date
   const selectedDate = date.date.toISOString().split('T')[0]
   router.push({
-    path: '/calendar',
+    path: '/budget',
     query: {
       view: 'transaction',
       date: selectedDate,
@@ -1104,12 +1104,14 @@ watch(
 .calendar-page {
   padding: 1rem;
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 }
 
 .calendar-container {
   max-width: 1400px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .view-header {
@@ -1129,13 +1131,13 @@ watch(
 .section-title {
   font-size: 1.2rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
   margin: 0 0 0.5rem;
 }
 
 .section-description {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
   margin: 0 0 1rem;
 }
 
@@ -1152,7 +1154,7 @@ watch(
   .month-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-primary);
     margin: 0;
     min-width: 200px;
     text-align: center;
@@ -1164,9 +1166,9 @@ watch(
   justify-content: space-around;
   gap: 1rem;
   padding: 1rem;
-  background: rgba(168, 85, 247, 0.1);
+  background: var(--color-primary-light);
   border-radius: 12px;
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  border: 1px solid var(--color-primary-border);
 }
 
 .cash-flow-item {
@@ -1178,7 +1180,7 @@ watch(
 
 .flow-label {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1189,11 +1191,11 @@ watch(
   font-weight: 700;
 
   &.positive {
-    color: #4caf50;
+    color: var(--color-positive);
   }
 
   &.negative {
-    color: #ef4444;
+    color: var(--color-negative);
   }
 }
 
@@ -1315,10 +1317,10 @@ watch(
 
 .scenarios-content-card {
   padding: 2rem;
-  background: rgba(30, 30, 30, 0.8);
+  background: var(--bg-dark);
   backdrop-filter: blur(20px);
   border-radius: 16px;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid var(--color-primary-border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
@@ -1326,13 +1328,13 @@ watch(
   .section-title {
     font-size: 1.2rem;
     font-weight: 600;
-    color: white;
+    color: var(--text-primary);
     margin: 0 0 0.5rem 0;
   }
 
   .section-description {
     font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-tertiary);
     margin: 0 0 1.5rem;
   }
 }
@@ -1442,10 +1444,10 @@ watch(
 
 .transaction-content-card {
   padding: 3rem 2rem;
-  background: rgba(30, 30, 30, 0.8);
+  background: var(--bg-dark);
   backdrop-filter: blur(20px);
   border-radius: 16px;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid var(--color-primary-border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   text-align: center;
 }
@@ -1749,7 +1751,103 @@ watch(
 
 .event-amount {
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
+}
+
+// Tablet and desktop optimizations
+@media (min-width: 1024px) {
+  .calendar-page {
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Make container wider on desktop with fluid scaling
+  .calendar-container {
+    max-width: min(90vw, 1600px);
+    width: 100%;
+  }
+
+  .scenarios-container {
+    max-width: min(90vw, 800px);
+    padding: 0 clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  .transaction-container {
+    max-width: min(90vw, 800px);
+    padding: 0 clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Make content boxes wider to fill space better with fluid padding
+  .glass-card {
+    :deep(.q-card__section) {
+      padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+    }
+  }
+
+  .scenarios-content-card {
+    padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+  }
+
+  .transaction-content-card {
+    padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+  }
+}
+
+// Large desktop screens (1440px+)
+@media (min-width: 1440px) {
+  .calendar-container {
+    max-width: min(92vw, 1800px);
+  }
+
+  .scenarios-container {
+    max-width: min(92vw, 900px);
+  }
+
+  .transaction-container {
+    max-width: min(92vw, 900px);
+  }
+
+  .glass-card {
+    :deep(.q-card__section) {
+      padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+    }
+  }
+
+  .scenarios-content-card {
+    padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+  }
+
+  .transaction-content-card {
+    padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+  }
+}
+
+// Extra large screens (1920px+)
+@media (min-width: 1920px) {
+  .calendar-container {
+    max-width: min(94vw, 2000px);
+  }
+
+  .scenarios-container {
+    max-width: min(94vw, 1000px);
+  }
+
+  .transaction-container {
+    max-width: min(94vw, 1000px);
+  }
+
+  .glass-card {
+    :deep(.q-card__section) {
+      padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+    }
+  }
+
+  .scenarios-content-card {
+    padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+  }
+
+  .transaction-content-card {
+    padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+  }
 }
 
 @media (max-width: 768px) {

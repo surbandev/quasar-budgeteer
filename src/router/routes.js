@@ -31,8 +31,8 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
-        path: 'calendar',
-        name: 'Calendar',
+        path: 'budget',
+        name: 'Budget',
         component: () => import('pages/PageCalendar.vue'),
         meta: { requiresAuth: true },
       },

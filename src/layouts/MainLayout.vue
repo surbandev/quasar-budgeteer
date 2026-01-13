@@ -34,29 +34,8 @@
       </div>
     </q-header>
 
-    <!-- Desktop Sidebar -->
-    <div v-if="$q.screen.gt.md" class="desktop-sidebar">
-      <SidebarNavigation />
-    </div>
-
-    <!-- Mobile Sidebar Drawer -->
-    <q-drawer
-      v-model="leftDrawerOpen"
-      :breakpoint="1024"
-      :width="280"
-      overlay
-      behavior="mobile"
-      class="mobile-drawer"
-    >
-      <SidebarNavigation
-        :mobileSidebarOpen="leftDrawerOpen"
-        @close-sidebar="leftDrawerOpen = false"
-      />
-    </q-drawer>
-
     <q-page-container
       :class="{
-        'with-desktop-sidebar': $q.screen.gt.md,
         'with-mobile-header': $q.screen.lt.lg,
         'with-desktop-header': $q.screen.gt.md,
       }"
@@ -64,8 +43,8 @@
       <router-view />
     </q-page-container>
 
-    <!-- Bottom Navigation (Mobile/Tablet only) -->
-    <q-footer v-if="$q.screen.lt.lg" class="bottom-nav">
+    <!-- Bottom Navigation -->
+    <q-footer class="bottom-nav">
       <q-tabs
         v-model="bottomTab"
         class="bottom-tabs"
@@ -76,6 +55,7 @@
         <q-tab name="overview" icon="visibility" label="Overview" no-caps class="bottom-tab" />
         <q-tab name="budget" icon="sync" label="Budget" no-caps class="bottom-tab" />
         <q-tab name="tools" icon="work" label="Tools" no-caps class="bottom-tab" />
+        <q-tab name="logout" icon="logout" label="Sign Out" no-caps class="bottom-tab" />
       </q-tabs>
     </q-footer>
   </q-layout>
@@ -85,21 +65,21 @@
 import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter, useRoute } from 'vue-router'
-import SidebarNavigation from 'components/SidebarNavigation.vue'
+import { useProfileStore } from '../stores/profile'
+import { useCalendarStore } from '../stores/calendar'
 
 const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
-const leftDrawerOpen = ref(false)
+const profileStore = useProfileStore()
+const calendarStore = useCalendarStore()
 const currentTab = ref('overview')
 const bottomTab = ref('overview')
 
 // Determine which tabs to show based on current route
 const isCalendarRoute = computed(() => {
-  // Show calendar tabs if on calendar page or transaction page with eventID (editing from calendar)
-  return (
-    route.path.startsWith('/calendar') || (route.path === '/transaction' && route.query.eventID)
-  )
+  // Show calendar tabs if on budget page or transaction page with eventID (editing from budget)
+  return route.path.startsWith('/budget') || (route.path === '/transaction' && route.query.eventID)
 })
 
 const tabs = computed(() => {
@@ -126,29 +106,41 @@ function onTabChange(tabName) {
   } else if (tabName === 'list') {
     router.push('/entries')
   }
-  // Calendar tabs
+  // Budget tabs (calendar, scenarios, transaction)
   else if (tabName === 'calendar') {
-    router.push('/calendar?view=calendar')
+    router.push('/budget?view=calendar')
   } else if (tabName === 'scenarios') {
-    router.push('/calendar?view=scenarios')
+    router.push('/budget?view=scenarios')
   } else if (tabName === 'transaction') {
-    router.push('/calendar?view=transaction')
+    router.push('/budget?view=transaction')
   }
 }
 
-function onBottomTabChange(tabName) {
+async function onBottomTabChange(tabName) {
   if (tabName === 'overview') {
     if (route.path !== '/overview') {
       router.push('/overview')
     }
   } else if (tabName === 'budget') {
-    if (route.path !== '/calendar' || route.query.view !== 'calendar') {
-      router.push('/calendar?view=calendar')
+    if (route.path !== '/budget' || route.query.view !== 'calendar') {
+      router.push('/budget?view=calendar')
     }
   } else if (tabName === 'tools') {
     // Always navigate to /tools, even if already there
     // This allows re-clicking the tools tab after navigating away
     router.push('/tools')
+  } else if (tabName === 'logout') {
+    // Handle logout
+    try {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userID')
+      await profileStore.resetCurrentProfile()
+      await calendarStore.resetForNewUser()
+      router.push('/login')
+    } catch (error) {
+      console.error('Error during logout:', error)
+      router.push('/login')
+    }
   }
 }
 
@@ -167,8 +159,8 @@ watch(
       currentTab.value = 'list'
       bottomTab.value = 'overview'
     }
-    // Calendar routes
-    else if (newPath.startsWith('/calendar')) {
+    // Budget routes
+    else if (newPath.startsWith('/budget')) {
       if (viewQuery === 'scenarios') {
         currentTab.value = 'scenarios'
       } else if (viewQuery === 'transaction') {
@@ -178,7 +170,7 @@ watch(
       }
       bottomTab.value = 'budget'
     }
-    // Transaction route - if it has eventID, it's from calendar, show calendar tabs
+    // Transaction route - if it has eventID, it's from budget, show budget tabs
     else if (newPath === '/transaction' && eventID) {
       currentTab.value = 'transaction'
       bottomTab.value = 'budget'
@@ -280,8 +272,6 @@ watch(
 
 // Desktop header styling
 .desktop-header {
-  margin-left: 280px; // Account for sidebar width
-
   .header-content {
     padding: 0.75rem 2rem;
   }
@@ -303,30 +293,11 @@ watch(
 
 .with-desktop-header {
   padding-top: 72px; // Space for fixed desktop header
-}
-
-// Desktop sidebar
-.desktop-sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  z-index: 1000;
-}
-
-.with-desktop-sidebar {
-  margin-left: 280px;
+  padding-bottom: 80px; // Space for bottom nav
 }
 
 .with-mobile-header {
   padding-bottom: 70px; // Space for bottom nav
-}
-
-// Mobile drawer
-.mobile-drawer {
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 // Bottom navigation
@@ -359,15 +330,31 @@ watch(
   }
 }
 
-@media (max-width: 1023px) {
-  .with-desktop-sidebar {
-    margin-left: 0;
-  }
-}
-
 @media (min-width: 1024px) {
   .with-mobile-header {
     padding-bottom: 0;
+  }
+
+  // Bottom nav styling for desktop
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+  }
+
+  .bottom-tabs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 3rem;
+    gap: 1.5rem;
+
+    :deep(.q-tab) {
+      flex: 1;
+      max-width: 150px;
+    }
   }
 }
 </style>
