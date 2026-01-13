@@ -34,7 +34,7 @@
           </div>
 
           <div class="tool-bubble" @click="goToSlice">
-            <q-icon name="pie_chart" class="tool-icon" />
+            <q-icon name="content_cut" class="tool-icon" />
             <span class="tool-name">Slice</span>
           </div>
         </div>
