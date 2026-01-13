@@ -8,6 +8,11 @@ export default defineConfig((/* ctx */) => {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
 
+    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#icon
+    // App icon source file (1024x1024 PNG) - used for mobile app icons
+    // Quasar will automatically generate all required sizes for iOS, Android, etc.
+    icon: 'icon-1024x1024.png',
+
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files

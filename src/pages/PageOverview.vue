@@ -6,6 +6,7 @@
 
       <!-- Spent This Month Chart with Snapshot -->
       <SpentThisMonthChart
+        class="spent-chart-wrapper"
         :totalSpent="monthlyExpenses"
         :spentData="dailySpendingData"
         :monthlyBalance="monthlyBalance"
@@ -16,6 +17,8 @@
         :activeScenarios="activeScenarios"
         :profiles="allProfiles"
         :currentProfile="currentProfile"
+        :startDate="startDate"
+        :endDate="endDate"
         @toggleScenario="toggleScenario"
         @deleteScenario="deleteScenario"
         @profileChange="handleProfileChange"
@@ -219,6 +222,27 @@ const monthlySavings = computed(() => {
 
 const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
 
+// Computed properties for date range
+const startDate = computed(() => {
+  if (!hasDateRangeFilter()) return null
+  const month = startMonth.value !== null ? startMonth.value - 1 : new Date().getMonth()
+  const year = startYear.value !== null ? startYear.value : new Date().getFullYear()
+  const day = startDay.value !== null ? startDay.value : 1
+  const date = new Date(year, month, day)
+  date.setHours(0, 0, 0, 0)
+  return date
+})
+
+const endDate = computed(() => {
+  if (!hasDateRangeFilter()) return null
+  const month = endMonth.value !== null ? endMonth.value - 1 : new Date().getMonth()
+  const year = endYear.value !== null ? endYear.value : new Date().getFullYear()
+  const day = endDay.value !== null ? endDay.value : new Date(year, month + 1, 0).getDate()
+  const date = new Date(year, month, day)
+  date.setHours(0, 0, 0, 0)
+  return date
+})
+
 // Helper function to get the maximum days in a month
 // month should be 1-12 (not 0-11)
 function getMaxDaysInMonth(month, year) {
@@ -299,9 +323,11 @@ async function updateFilteredData() {
     endDay.value = endMaxDays
   }
 
-  const startDate = new Date(Date.UTC(startYearNum, startMonthNum - 1, startDayNum))
-  const endDate = new Date(Date.UTC(endYearNum, endMonthNum - 1, endDayNum))
-  await eventsStore.fetchEventsForDateRange(startDate, endDate)
+  const start = new Date(startYearNum, startMonthNum - 1, startDayNum)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(endYearNum, endMonthNum - 1, endDayNum)
+  end.setHours(0, 0, 0, 0)
+  await eventsStore.fetchEventsForDateRange(start, end)
   await updateScenarioData()
 }
 
@@ -320,26 +346,41 @@ function calculateDailySpending() {
     return
   }
 
-  // Get the current month's date range
+  // Get the date range
   const now = new Date()
-  const year = endYear.value !== null ? endYear.value : now.getFullYear()
-  const month = endMonth.value !== null ? endMonth.value - 1 : now.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  let start, end
 
-  // Initialize daily spending array
-  const dailySpending = new Array(daysInMonth).fill(0)
+  if (hasDateRangeFilter() && startDate.value && endDate.value) {
+    start = new Date(startDate.value)
+    end = new Date(endDate.value)
+  } else {
+    // Default to current month
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    start = new Date(year, month, 1)
+    end = new Date(year, month + 1, 0)
+  }
 
-  // Aggregate spending by day
+  // Calculate number of days in the range
+  const timeDiff = end.getTime() - start.getTime()
+  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1
+
+  // Initialize daily spending array for the entire range
+  const dailySpending = new Array(daysDiff).fill(0)
+
+  // Aggregate spending by day across the entire date range
   eventsToUse.forEach((event) => {
     if (event.type === 'DEBIT' && event.date) {
       const eventDate = new Date(event.date)
-      const day = eventDate.getDate()
-      const eventMonth = eventDate.getMonth()
-      const eventYear = eventDate.getFullYear()
+      eventDate.setHours(0, 0, 0, 0)
 
-      // Only count if it's in the current month
-      if (eventMonth === month && eventYear === year && day <= daysInMonth) {
-        dailySpending[day - 1] += parseFloat(event.amount || 0)
+      // Check if event is within the date range
+      if (eventDate >= start && eventDate <= end) {
+        // Calculate which day index this event falls on
+        const dayIndex = Math.floor((eventDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+        if (dayIndex >= 0 && dayIndex < daysDiff) {
+          dailySpending[dayIndex] += parseFloat(event.amount || 0)
+        }
       }
     }
   })
@@ -473,9 +514,11 @@ async function loadProfileData() {
       }
 
       if (hasDateRangeFilter()) {
-        const startDate = new Date(Date.UTC(startYear.value, startMonth.value - 1, startDay.value))
-        const endDate = new Date(Date.UTC(endYear.value, endMonth.value - 1, endDay.value))
-        await eventsStore.fetchEventsForDateRange(startDate, endDate)
+        const start = new Date(startYear.value, startMonth.value - 1, startDay.value)
+        start.setHours(0, 0, 0, 0)
+        const end = new Date(endYear.value, endMonth.value - 1, endDay.value)
+        end.setHours(0, 0, 0, 0)
+        await eventsStore.fetchEventsForDateRange(start, end)
       } else {
         await eventsStore.fetchEventsForMonthByScenario()
       }
@@ -518,6 +561,11 @@ watch(currentProfile, async (newProfile) => {
   margin: 0 auto;
   position: relative;
   z-index: 1;
+}
+
+// Match spacing below chart to spacing above
+.spent-chart-wrapper {
+  margin-bottom: 1rem;
 }
 
 // Mobile optimization
@@ -911,7 +959,61 @@ watch(currentProfile, async (newProfile) => {
 // Tablet and desktop optimizations
 @media (min-width: 1024px) {
   .overview-page {
-    padding: 2rem;
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Match spacing below chart to spacing above on desktop
+  .spent-chart-wrapper {
+    margin-bottom: clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Make container wider on desktop with fluid scaling
+  .overview-container {
+    max-width: min(90vw, 1600px);
+    width: 100%;
+  }
+
+  // Make date range filters wider on desktop
+  .date-range-filters {
+    .row {
+      .col-md-6 {
+        max-width: 45%;
+        flex: 0 0 45%;
+      }
+    }
+  }
+
+  // Make content boxes wider to fill space better with fluid padding
+  .glass-card {
+    .q-card__section {
+      padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+    }
+  }
+}
+
+// Large desktop screens (1440px+)
+@media (min-width: 1440px) {
+  .overview-container {
+    max-width: min(92vw, 1800px);
+  }
+
+  .glass-card {
+    .q-card__section {
+      padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+    }
+  }
+}
+
+// Extra large screens (1920px+)
+@media (min-width: 1920px) {
+  .overview-container {
+    max-width: min(94vw, 2000px);
+  }
+
+  .glass-card {
+    .q-card__section {
+      padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+    }
   }
 }
 

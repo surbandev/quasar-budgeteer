@@ -2,7 +2,7 @@
   <q-card class="spent-chart-card glass-card">
     <q-card-section>
       <div class="chart-header">
-        <span class="chart-label">SPENT THIS MONTH</span>
+        <span class="chart-label">{{ chartLabel }}</span>
         <h2 class="chart-amount">{{ formatCurrency(totalSpent) }}</h2>
       </div>
 
@@ -53,19 +53,26 @@
                       v-for="scenario in availableScenarios"
                       :key="scenario.id"
                       class="scenario-card"
-                      :class="{ 'active': activeScenarios.has(scenario.id) }"
+                      :class="{ active: activeScenarios.has(scenario.id) }"
                     >
                       <div class="scenario-card-content" @click="$emit('toggleScenario', scenario)">
                         <div class="scenario-info">
                           <q-icon
-                            :name="activeScenarios.has(scenario.id) ? 'check_circle' : 'radio_button_unchecked'"
+                            :name="
+                              activeScenarios.has(scenario.id)
+                                ? 'check_circle'
+                                : 'radio_button_unchecked'
+                            "
                             :color="activeScenarios.has(scenario.id) ? 'positive' : 'grey-6'"
                             size="20px"
                           />
                           <span class="scenario-name">{{ scenario.name }}</span>
                         </div>
                         <div class="scenario-status">
-                          <span v-if="activeScenarios.has(scenario.id)" class="status-badge active-badge">
+                          <span
+                            v-if="activeScenarios.has(scenario.id)"
+                            class="status-badge active-badge"
+                          >
                             Active
                           </span>
                           <span v-else class="status-badge inactive-badge">Inactive</span>
@@ -224,6 +231,14 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  startDate: {
+    type: Date,
+    default: null,
+  },
+  endDate: {
+    type: Date,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['toggleScenario', 'deleteScenario', 'profileChange'])
@@ -232,9 +247,10 @@ const selectedProfileId = ref(props.currentProfile?.id || props.currentProfile?.
 
 const profileOptions = computed(() => {
   return props.profiles.map((profile) => {
-    const profileName = profile.first_name && profile.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile.first_name || profile.last_name || profile.name || 'Unnamed Profile'
+    const profileName =
+      profile.first_name && profile.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : profile.first_name || profile.last_name || profile.name || 'Unnamed Profile'
     return {
       label: profileName,
       value: profile.id || profile._id,
@@ -243,21 +259,25 @@ const profileOptions = computed(() => {
 })
 
 function onProfileChange(profileId) {
-  const selectedProfile = props.profiles.find((p) => (p.id === profileId) || (p._id === profileId))
+  const selectedProfile = props.profiles.find((p) => p.id === profileId || p._id === profileId)
   if (selectedProfile) {
     emit('profileChange', selectedProfile)
   }
 }
 
 // Watch for changes in currentProfile prop
-watch(() => props.currentProfile, (newProfile) => {
-  if (newProfile) {
-    const newProfileId = newProfile.id || newProfile._id
-    if (newProfileId !== selectedProfileId.value) {
-      selectedProfileId.value = newProfileId
+watch(
+  () => props.currentProfile,
+  (newProfile) => {
+    if (newProfile) {
+      const newProfileId = newProfile.id || newProfile._id
+      if (newProfileId !== selectedProfileId.value) {
+        selectedProfileId.value = newProfileId
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 
 const router = useRouter()
 
@@ -265,14 +285,77 @@ function goToScenarios() {
   router.push({ name: 'CreateScenario' })
 }
 
-// Generate days of the month (1-31)
-const daysInMonth = computed(() => {
-  const days = []
-  const numDays = props.spentData.length || 31
-  for (let i = 1; i <= numDays; i++) {
-    days.push(i)
+// Calculate if date range is more than a month
+const isMoreThanMonth = computed(() => {
+  if (!props.startDate || !props.endDate) return false
+  const start = new Date(props.startDate)
+  const end = new Date(props.endDate)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  const timeDiff = end.getTime() - start.getTime()
+  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1 // +1 to include both start and end days
+  return daysDiff > 31
+})
+
+// Chart label based on date range
+const chartLabel = computed(() => {
+  return isMoreThanMonth.value ? 'SPENT THIS TERM' : 'SPENT THIS MONTH'
+})
+
+// Generate date labels for x-axis
+const dateLabels = computed(() => {
+  // Ensure labels match the data array length
+  const dataLength = props.spentData.length
+
+  if (!props.startDate || !props.endDate || dataLength === 0) {
+    // Fallback to day numbers if no dates provided
+    const days = []
+    const numDays = dataLength || 31
+    for (let i = 1; i <= numDays; i++) {
+      days.push(i)
+    }
+    return days
   }
-  return days
+
+  // Create dates from the props, ensuring we use the exact date values
+  const start = new Date(props.startDate.getTime())
+  const end = new Date(props.endDate.getTime())
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  const labels = []
+  const currentDate = new Date(start.getTime())
+
+  // Generate labels for each day in the range
+  let dayCount = 0
+  while (currentDate <= end && dayCount < dataLength) {
+    // Format: show day number for single month, or date for multi-month
+    if (isMoreThanMonth.value) {
+      // For multi-month, show abbreviated date (e.g., "Jan 1", "Feb 15")
+      const month = currentDate.toLocaleDateString('en-US', { month: 'short' })
+      const day = currentDate.getDate()
+      labels.push(`${month} ${day}`)
+    } else {
+      // For single month, just show day number
+      labels.push(currentDate.getDate())
+    }
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1)
+    dayCount++
+  }
+
+  // Ensure we have the same number of labels as data points
+  while (labels.length < dataLength) {
+    if (isMoreThanMonth.value) {
+      const month = currentDate.toLocaleDateString('en-US', { month: 'short' })
+      const day = currentDate.getDate()
+      labels.push(`${month} ${day}`)
+    } else {
+      labels.push(currentDate.getDate())
+    }
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+
+  return labels.slice(0, dataLength)
 })
 
 // Calculate cumulative spending
@@ -293,10 +376,10 @@ const cumulativeSpending = computed(() => {
 const averageLine = computed(() => {
   const total =
     props.totalSpent || cumulativeSpending.value[cumulativeSpending.value.length - 1] || 4466
-  const days = daysInMonth.value.length
+  const days = dateLabels.value.length
   const dailyAverage = total / days
 
-  return daysInMonth.value.map((day, index) => dailyAverage * (index + 1))
+  return dateLabels.value.map((day, index) => dailyAverage * (index + 1))
 })
 
 // Generate mock data if none provided
@@ -310,7 +393,7 @@ function generateMockData() {
 }
 
 const chartData = computed(() => ({
-  labels: daysInMonth.value,
+  labels: dateLabels.value,
   datasets: [
     {
       label: 'This period',
@@ -347,7 +430,7 @@ const chartData = computed(() => ({
   ],
 }))
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: {
@@ -394,9 +477,21 @@ const chartOptions = {
         font: {
           size: 11,
         },
-        maxRotation: 0,
+        maxRotation: isMoreThanMonth.value ? 45 : 0,
         autoSkip: true,
         maxTicksLimit: 7,
+        callback: function (value, index) {
+          // Show every nth label based on data length to avoid crowding
+          const labels = dateLabels.value
+          if (labels.length <= 7) {
+            return labels[index] || ''
+          }
+          const step = Math.ceil(labels.length / 7) // Show approximately 7 labels
+          if (index % step === 0 || index === labels.length - 1) {
+            return labels[index] || ''
+          }
+          return ''
+        },
       },
     },
     y: {
@@ -406,7 +501,7 @@ const chartOptions = {
       },
     },
   },
-}
+}))
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -858,7 +953,7 @@ function formatCurrency(amount) {
 @media (min-width: 1024px) {
   .spent-chart-card {
     :deep(.q-card__section) {
-      padding: 2rem 2rem 1.75rem;
+      padding: 2rem 2.5rem 1.75rem;
     }
   }
 
@@ -880,6 +975,16 @@ function formatCurrency(amount) {
 
   .snapshot-value {
     font-size: 1.1rem;
+  }
+
+  // Make profile selector wider on desktop
+  .snapshot-footer {
+    justify-content: flex-start;
+  }
+
+  .profile-select {
+    max-width: 300px;
+    width: 100%;
   }
 }
 </style>

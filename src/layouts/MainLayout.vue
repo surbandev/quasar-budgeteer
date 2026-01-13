@@ -285,6 +285,20 @@ watch(
   .header-content {
     padding: 0.75rem 2rem;
   }
+
+  // Make tabs spread equally on desktop
+  .desktop-tabs {
+    :deep(.q-tabs__content) {
+      display: flex;
+      width: 100%;
+    }
+
+    :deep(.q-tab) {
+      flex: 1;
+      max-width: none;
+      justify-content: center;
+    }
+  }
 }
 
 .with-desktop-header {

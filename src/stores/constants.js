@@ -96,8 +96,11 @@ export const useConstantsStore = defineStore('constants', () => {
   const categoryColors = {
     HOUSING: '#9c27b0',
     MORTGAGE: '#9c27b0',
+    RENT: '#9c27b0',
     'FOOD & DINING': '#4caf50',
     'FOOD & DRINKS': '#4caf50',
+    GROCERY: '#4caf50',
+    DINING: '#4caf50',
     TRANSPORTATION: '#2196f3',
     ENTERTAINMENT: '#f44336',
     SHOPPING: '#ff9800',
@@ -107,14 +110,25 @@ export const useConstantsStore = defineStore('constants', () => {
     EDUCATION: '#3f51b5',
     SAVINGS: '#4caf50',
     SUBSCRIPTION: '#e91e63',
+    INSURANCE: '#ff9800',
+    AUTO_LOAN: '#607d8b',
+    GENERIC_LOAN: '#607d8b',
+    CREDIT_CARD: '#9c27b0',
+    PHONE: '#00bcd4',
+    PRIMARY_INCOME: '#2e7d32',
+    SECONDARY_INCOME: '#4caf50',
+    MISC: '#9e9e9e',
     MISCELLANEOUS: '#9e9e9e',
   }
 
   const categoryIcons = {
     HOUSING: 'home',
     MORTGAGE: 'home',
+    RENT: 'home',
     'FOOD & DINING': 'restaurant',
     'FOOD & DRINKS': 'restaurant',
+    GROCERY: 'shopping_cart',
+    DINING: 'restaurant',
     TRANSPORTATION: 'directions_car',
     ENTERTAINMENT: 'movie',
     SHOPPING: 'shopping_bag',
@@ -124,6 +138,14 @@ export const useConstantsStore = defineStore('constants', () => {
     EDUCATION: 'school',
     SAVINGS: 'savings',
     SUBSCRIPTION: 'subscriptions',
+    INSURANCE: 'shield',
+    AUTO_LOAN: 'directions_car',
+    GENERIC_LOAN: 'account_balance',
+    CREDIT_CARD: 'credit_card',
+    PHONE: 'phone',
+    PRIMARY_INCOME: 'attach_money',
+    SECONDARY_INCOME: 'attach_money',
+    MISC: 'category',
     MISCELLANEOUS: 'category',
   }
 
@@ -143,10 +165,7 @@ export const useConstantsStore = defineStore('constants', () => {
   }
 
   const getYears = (startOffset = 20, length = 60) => {
-    return Array.from(
-      { length },
-      (_, i) => new Date().getFullYear() - startOffset + i
-    )
+    return Array.from({ length }, (_, i) => new Date().getFullYear() - startOffset + i)
   }
 
   const getCategoryColor = (category) => {

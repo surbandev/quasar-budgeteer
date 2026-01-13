@@ -67,9 +67,13 @@
             >
               <div
                 class="transaction-icon"
-                :style="{ backgroundColor: getCategoryColor(transaction.category) }"
+                :style="{ backgroundColor: constantsStore.getCategoryColor(transaction.category) }"
               >
-                <q-icon :name="getCategoryIcon(transaction.category)" size="20px" color="white" />
+                <q-icon
+                  :name="constantsStore.getCategoryIcon(transaction.category)"
+                  size="20px"
+                  color="white"
+                />
               </div>
               <div class="transaction-info">
                 <span class="transaction-name">{{
@@ -95,8 +99,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useEventsStore } from '../stores/events'
+import { useConstantsStore } from '../stores/constants'
 
 const eventsStore = useEventsStore()
+const constantsStore = useConstantsStore()
 
 const loading = ref(false)
 const selectedMonth = ref(new Date().getMonth()) // 0-11
@@ -213,54 +219,6 @@ function getEventDisplayAmount(event) {
   return event.amount || 0
 }
 
-function getCategoryColor(category) {
-  const colors = {
-    HOUSING: 'rgba(255, 167, 38, 0.8)',
-    MORTGAGE: 'rgba(255, 167, 38, 0.8)',
-    'FOOD & DINING': 'rgba(76, 175, 80, 0.8)',
-    'FOOD & DRINKS': 'rgba(76, 175, 80, 0.8)',
-    GROCERIES: 'rgba(66, 165, 245, 0.8)',
-    TRANSPORTATION: 'rgba(156, 39, 176, 0.8)',
-    ENTERTAINMENT: 'rgba(233, 30, 99, 0.8)',
-    SHOPPING: 'rgba(255, 193, 7, 0.8)',
-    UTILITIES: 'rgba(96, 125, 139, 0.8)',
-    UTILITY: 'rgba(96, 125, 139, 0.8)',
-    HEALTHCARE: 'rgba(244, 67, 54, 0.8)',
-    INSURANCE: 'rgba(255, 152, 0, 0.8)',
-    GYM: 'rgba(233, 30, 99, 0.8)',
-    EDUCATION: 'rgba(103, 58, 183, 0.8)',
-    SAVINGS: 'rgba(76, 175, 80, 0.8)',
-    SALARY: 'rgba(76, 175, 80, 0.8)',
-    INCOME: 'rgba(76, 175, 80, 0.8)',
-    MISCELLANEOUS: 'rgba(158, 158, 158, 0.8)',
-  }
-  return colors[category?.toUpperCase()] || 'rgba(168, 85, 247, 0.7)'
-}
-
-function getCategoryIcon(category) {
-  const icons = {
-    HOUSING: 'home',
-    MORTGAGE: 'home',
-    'FOOD & DINING': 'restaurant',
-    'FOOD & DRINKS': 'restaurant',
-    GROCERIES: 'local_grocery_store',
-    TRANSPORTATION: 'directions_car',
-    ENTERTAINMENT: 'movie',
-    SHOPPING: 'shopping_bag',
-    UTILITIES: 'bolt',
-    UTILITY: 'bolt',
-    HEALTHCARE: 'local_hospital',
-    INSURANCE: 'favorite',
-    GYM: 'fitness_center',
-    EDUCATION: 'school',
-    SAVINGS: 'savings',
-    SALARY: 'attach_money',
-    INCOME: 'attach_money',
-    MISCELLANEOUS: 'category',
-  }
-  return icons[category?.toUpperCase()] || 'receipt'
-}
-
 function toTitleCase(str) {
   if (!str) return ''
   return str
@@ -318,7 +276,7 @@ onMounted(async () => {
 .entries-page {
   padding: 1rem;
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   position: relative;
   padding-bottom: 2rem;
 }
@@ -335,9 +293,9 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem 1.25rem;
-  background: rgba(40, 40, 45, 0.95);
+  background: var(--bg-button);
   backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid var(--border-secondary);
   border-radius: 24px;
   margin-bottom: 1.5rem;
 
@@ -360,14 +318,14 @@ onMounted(async () => {
     .month-label {
       font-size: 1.5rem;
       font-weight: 600;
-      color: white;
+      color: var(--text-primary);
       letter-spacing: -0.3px;
     }
 
     .transaction-count {
       font-size: 0.75rem;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--text-tertiary);
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
@@ -379,9 +337,9 @@ onMounted(async () => {
   justify-content: space-around;
   align-items: center;
   padding: 1.5rem;
-  background: rgba(40, 40, 45, 0.95);
+  background: var(--bg-button);
   backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid var(--border-secondary);
   border-radius: 24px;
   margin-bottom: 1.5rem;
 }
@@ -396,21 +354,21 @@ onMounted(async () => {
 .summary-amount {
   font-size: 1.5rem;
   font-weight: 700;
-  color: white;
+  color: var(--text-primary);
 
   &.positive {
-    color: #4caf50;
+    color: var(--color-positive);
   }
 
   &.negative {
-    color: #f44336;
+    color: var(--color-negative-alt);
   }
 }
 
 .summary-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
@@ -437,13 +395,13 @@ onMounted(async () => {
 .day-date {
   font-size: 1.1rem;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
 }
 
 .day-total {
   font-size: 1rem;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
 }
 
 .day-transactions {
@@ -457,15 +415,15 @@ onMounted(async () => {
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: rgba(40, 40, 45, 0.95);
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-button);
+  border: 2px solid var(--border-secondary);
   border-radius: 16px;
   transition: all 0.2s ease;
   cursor: pointer;
 
   &:hover {
-    background: rgba(50, 50, 55, 0.95);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--bg-button-hover);
+    border-color: var(--border-primary);
     transform: translateX(4px);
   }
 }
@@ -490,25 +448,104 @@ onMounted(async () => {
 .transaction-name {
   font-size: 1rem;
   font-weight: 500;
-  color: white;
+  color: var(--text-primary);
 }
 
 .transaction-category {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
 }
 
 .transaction-amount {
   font-size: 1rem;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
 }
 
 .no-data {
   padding: 3rem 1.5rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-size: 1rem;
+}
+
+// Tablet and desktop optimizations
+@media (min-width: 1024px) {
+  .entries-page {
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  // Make container wider on desktop with fluid scaling
+  .entries-container {
+    max-width: min(90vw, 1600px);
+    width: 100%;
+  }
+
+  // Make content boxes wider to fill space better with fluid padding
+  .glass-card {
+    :deep(.q-card__section) {
+      padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+    }
+  }
+
+  .month-selector-card {
+    padding: clamp(1.5rem, 2vw, 2rem) clamp(1.25rem, 2.5vw, 2rem);
+    margin-bottom: clamp(1.5rem, 2vw, 2.5rem);
+  }
+
+  .summary-card {
+    padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+  }
+
+  .day-header {
+    padding: clamp(1rem, 1.5vw, 1.5rem) clamp(1.25rem, 2vw, 2rem);
+  }
+
+  .transaction-item {
+    padding: clamp(1rem, 1.5vw, 1.25rem) clamp(1.25rem, 2vw, 2rem);
+  }
+}
+
+// Large desktop screens (1440px+)
+@media (min-width: 1440px) {
+  .entries-container {
+    max-width: min(92vw, 1800px);
+  }
+
+  .glass-card {
+    :deep(.q-card__section) {
+      padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+    }
+  }
+
+  .month-selector-card {
+    padding: clamp(1.75rem, 2vw, 2.5rem) clamp(1.5rem, 2.5vw, 2.5rem);
+  }
+
+  .summary-card {
+    padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+  }
+}
+
+// Extra large screens (1920px+)
+@media (min-width: 1920px) {
+  .entries-container {
+    max-width: min(94vw, 2000px);
+  }
+
+  .glass-card {
+    :deep(.q-card__section) {
+      padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+    }
+  }
+
+  .month-selector-card {
+    padding: clamp(2rem, 2vw, 3rem) clamp(2rem, 3vw, 3rem);
+  }
+
+  .summary-card {
+    padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+  }
 }
 
 @media (max-width: 768px) {
