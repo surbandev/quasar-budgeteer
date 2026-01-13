@@ -89,6 +89,10 @@
         <q-card class="glass-card q-mt-lg">
           <q-card-section>
             <h3 class="upcoming-title">Upcoming transactions</h3>
+            <div class="upcoming-total-expenses">
+              <span class="total-label">Total expenses left this month:</span>
+              <span class="total-amount negative">${{ totalUpcomingExpenses.toFixed(2) }}</span>
+            </div>
             <div class="upcoming-transactions-list">
               <div
                 v-for="transaction in upcomingTransactions"
@@ -611,6 +615,18 @@ const upcomingTransactions = computed(() => {
       return dateA - dateB
     })
     .slice(0, 10)
+})
+
+const totalUpcomingExpenses = computed(() => {
+  if (!upcomingTransactions.value || upcomingTransactions.value.length === 0) {
+    return 0
+  }
+
+  return upcomingTransactions.value
+    .filter((transaction) => transaction.type === 'DEBIT')
+    .reduce((total, transaction) => {
+      return total + (getEventDisplayAmount(transaction) || 0)
+    }, 0)
 })
 
 const scenarioOptionsForTransaction = computed(() => {
@@ -1964,8 +1980,31 @@ watch(
   font-size: 1.5rem;
   font-weight: 700;
   color: white;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1rem 0;
   letter-spacing: -0.3px;
+}
+
+.upcoming-total-expenses {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 0;
+  margin-bottom: 1.5rem;
+}
+
+.total-label {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.total-amount {
+  font-size: 1.2rem;
+  font-weight: 700;
+
+  &.negative {
+    color: #ef4444;
+  }
 }
 
 .upcoming-transactions-list {
@@ -2093,7 +2132,20 @@ watch(
 @media (max-width: 768px) {
   .upcoming-title {
     font-size: 1.25rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .upcoming-total-expenses {
+    padding: 0.75rem 0;
     margin-bottom: 1.25rem;
+  }
+
+  .total-label {
+    font-size: 0.875rem;
+  }
+
+  .total-amount {
+    font-size: 1.1rem;
   }
 
   .upcoming-transaction-item {
