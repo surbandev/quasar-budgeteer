@@ -19,7 +19,12 @@
                 class="transaction-icon"
                 :style="{ backgroundColor: getCategoryColor(transaction.category) }"
               >
-                <q-icon :name="getCategoryIcon(transaction.category)" size="20px" color="white" />
+                <BrandIcon
+                  :transaction-name="transaction.name"
+                  :category="transaction.category"
+                  size="24px"
+                  color="white"
+                />
               </div>
             </div>
             <div class="transaction-details">
@@ -53,6 +58,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConstantsStore } from '../stores/constants'
+import BrandIcon from './BrandIcon.vue'
 
 const props = defineProps({
   calendarDays: {
@@ -152,10 +158,6 @@ function getEventDisplayAmount(event) {
   }
 
   return 0
-}
-
-function getCategoryIcon(category) {
-  return constantsStore.getCategoryIcon(category)
 }
 
 function getCategoryColor(category) {

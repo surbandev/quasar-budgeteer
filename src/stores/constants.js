@@ -176,6 +176,55 @@ export const useConstantsStore = defineStore('constants', () => {
     return categoryIcons[category?.toUpperCase()] || 'receipt'
   }
 
+  // Brand icon mapping - maps transaction names to SVG file paths
+  // Add new icons by adding entries here and placing the SVG file in src/assets/icons/brands/
+  const brandIconMap = {
+    spotify: 'spotify.svg',
+    hulu: 'hulu.svg',
+    experian: 'experian.svg',
+    expirian: 'experian.svg', // Common misspelling
+  }
+
+  // Get brand icon SVG path by transaction name
+  const getBrandIcon = (transactionName) => {
+    if (!transactionName) return null
+
+    // Normalize the name: lowercase, trim, remove special characters
+    const normalizedName = transactionName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s]/g, '')
+
+    // Try exact match first
+    let iconPath = brandIconMap[normalizedName]
+
+    // If no exact match, try partial matching
+    if (!iconPath) {
+      for (const [key, path] of Object.entries(brandIconMap)) {
+        if (normalizedName.includes(key) || key.includes(normalizedName)) {
+          iconPath = path
+          break
+        }
+      }
+    }
+
+    // If still no match, try to find by first word
+    if (!iconPath) {
+      const words = normalizedName.split(/\s+/)
+      if (words.length > 0) {
+        const firstWord = words[0]
+        iconPath = brandIconMap[firstWord]
+      }
+    }
+
+    return iconPath || null
+  }
+
+  // Check if a transaction has a brand icon available
+  const hasBrandIcon = (transactionName) => {
+    return getBrandIcon(transactionName) !== null
+  }
+
   return {
     // Getters
     getCategoryOptions,
@@ -190,5 +239,7 @@ export const useConstantsStore = defineStore('constants', () => {
     getYears,
     getCategoryColor,
     getCategoryIcon,
+    getBrandIcon,
+    hasBrandIcon,
   }
 })
