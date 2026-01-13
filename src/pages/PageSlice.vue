@@ -271,12 +271,14 @@ function restartGame() {
 // Touch handlers
 function handleTouchStart(e) {
   if (gameOver.value) return
+  e.preventDefault()
   isSwiping.value = true
   swipePoints.value = [{ x: e.touches[0].clientX, y: e.touches[0].clientY }]
 }
 
 function handleTouchMove(e) {
   if (!isSwiping.value || gameOver.value) return
+  e.preventDefault()
   swipePoints.value.push({ x: e.touches[0].clientX, y: e.touches[0].clientY })
   checkCollisions(e.touches[0].clientX, e.touches[0].clientY)
 }

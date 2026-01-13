@@ -53,6 +53,17 @@ export default boot(({ app }) => {
     },
     (error) => {
       console.error('Response error intercepted:', error.message)
+
+      // Handle 401 Unauthorized - token expired or invalid
+      if (error.response && error.response.status === 401) {
+        // Clear auth data
+        localStorage.removeItem('token')
+        localStorage.removeItem('userID')
+
+        // Redirect to login page
+        window.location.href = '/login'
+      }
+
       return Promise.reject(error)
     },
   )
@@ -107,6 +118,17 @@ export default boot(({ app }) => {
     },
     (error) => {
       console.error('Response error intercepted:', error.message)
+
+      // Handle 401 Unauthorized - token expired or invalid
+      if (error.response && error.response.status === 401) {
+        // Clear auth data
+        localStorage.removeItem('token')
+        localStorage.removeItem('userID')
+
+        // Redirect to login page
+        window.location.href = '/login'
+      }
+
       return Promise.reject(error)
     },
   )
