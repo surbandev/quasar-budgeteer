@@ -130,17 +130,40 @@ async function onBottomTabChange(tabName) {
     // This allows re-clicking the tools tab after navigating away
     router.push('/tools')
   } else if (tabName === 'logout') {
-    // Handle logout
-    try {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userID')
-      await profileStore.resetCurrentProfile()
-      await calendarStore.resetForNewUser()
-      router.push('/login')
-    } catch (error) {
-      console.error('Error during logout:', error)
-      router.push('/login')
-    }
+    // Show confirmation dialog before logout
+    $q.dialog({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out of your session?',
+      cancel: true,
+      persistent: true,
+      color: 'primary',
+    })
+      .onOk(async () => {
+        // User confirmed logout
+        try {
+          localStorage.removeItem('token')
+          localStorage.removeItem('userID')
+          await profileStore.resetCurrentProfile()
+          await calendarStore.resetForNewUser()
+          router.push('/login')
+        } catch (error) {
+          console.error('Error during logout:', error)
+          router.push('/login')
+        }
+      })
+      .onCancel(() => {
+        // User cancelled - reset bottomTab to previous value
+        // Determine the correct tab based on current route
+        if (route.path === '/overview') {
+          bottomTab.value = 'overview'
+        } else if (route.path.startsWith('/budget')) {
+          bottomTab.value = 'budget'
+        } else if (route.path === '/tools') {
+          bottomTab.value = 'tools'
+        } else {
+          bottomTab.value = 'overview'
+        }
+      })
   }
 }
 
@@ -252,9 +275,7 @@ watch(
   }
 
   :deep(.q-tab__indicator) {
-    height: 4px;
-    border-radius: 4px 4px 0 0;
-    background: white;
+    display: none;
   }
 }
 
