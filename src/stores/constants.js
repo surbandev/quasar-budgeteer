@@ -92,6 +92,41 @@ export const useConstantsStore = defineStore('constants', () => {
     { label: 'Light', value: 'light' },
   ]
 
+  // Category colors - matches CSS variables
+  const categoryColors = {
+    HOUSING: '#9c27b0',
+    MORTGAGE: '#9c27b0',
+    'FOOD & DINING': '#4caf50',
+    'FOOD & DRINKS': '#4caf50',
+    TRANSPORTATION: '#2196f3',
+    ENTERTAINMENT: '#f44336',
+    SHOPPING: '#ff9800',
+    UTILITIES: '#00bcd4',
+    UTILITY: '#00bcd4',
+    HEALTHCARE: '#e91e63',
+    EDUCATION: '#3f51b5',
+    SAVINGS: '#4caf50',
+    SUBSCRIPTION: '#e91e63',
+    MISCELLANEOUS: '#9e9e9e',
+  }
+
+  const categoryIcons = {
+    HOUSING: 'home',
+    MORTGAGE: 'home',
+    'FOOD & DINING': 'restaurant',
+    'FOOD & DRINKS': 'restaurant',
+    TRANSPORTATION: 'directions_car',
+    ENTERTAINMENT: 'movie',
+    SHOPPING: 'shopping_bag',
+    UTILITIES: 'bolt',
+    UTILITY: 'bolt',
+    HEALTHCARE: 'local_hospital',
+    EDUCATION: 'school',
+    SAVINGS: 'savings',
+    SUBSCRIPTION: 'subscriptions',
+    MISCELLANEOUS: 'category',
+  }
+
   // Getters
   const getCategoryOptions = computed(() => categoryOptions)
   const getFrequencyOptions = computed(() => frequencyOptions)
@@ -114,6 +149,14 @@ export const useConstantsStore = defineStore('constants', () => {
     )
   }
 
+  const getCategoryColor = (category) => {
+    return categoryColors[category?.toUpperCase()] || categoryColors.MISCELLANEOUS
+  }
+
+  const getCategoryIcon = (category) => {
+    return categoryIcons[category?.toUpperCase()] || 'receipt'
+  }
+
   return {
     // Getters
     getCategoryOptions,
@@ -126,5 +169,7 @@ export const useConstantsStore = defineStore('constants', () => {
     // Helper functions
     isLoanCategory,
     getYears,
+    getCategoryColor,
+    getCategoryIcon,
   }
 })

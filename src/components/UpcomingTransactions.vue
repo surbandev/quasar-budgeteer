@@ -52,6 +52,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useConstantsStore } from '../stores/constants'
 
 const props = defineProps({
   calendarDays: {
@@ -62,6 +63,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const constantsStore = useConstantsStore()
 
 // Compute upcoming transactions for the selected month
 const upcomingTransactions = computed(() => {
@@ -153,43 +155,11 @@ function getEventDisplayAmount(event) {
 }
 
 function getCategoryIcon(category) {
-  const icons = {
-    HOUSING: 'home',
-    MORTGAGE: 'home',
-    'FOOD & DINING': 'restaurant',
-    'FOOD & DRINKS': 'restaurant',
-    TRANSPORTATION: 'directions_car',
-    ENTERTAINMENT: 'movie',
-    SHOPPING: 'shopping_bag',
-    UTILITIES: 'bolt',
-    UTILITY: 'bolt',
-    HEALTHCARE: 'local_hospital',
-    EDUCATION: 'school',
-    SAVINGS: 'savings',
-    SUBSCRIPTION: 'subscriptions',
-    MISCELLANEOUS: 'category',
-  }
-  return icons[category?.toUpperCase()] || 'receipt'
+  return constantsStore.getCategoryIcon(category)
 }
 
 function getCategoryColor(category) {
-  const colors = {
-    HOUSING: '#9c27b0',
-    MORTGAGE: '#9c27b0',
-    'FOOD & DINING': '#4caf50',
-    'FOOD & DRINKS': '#4caf50',
-    TRANSPORTATION: '#2196f3',
-    ENTERTAINMENT: '#f44336',
-    SHOPPING: '#ff9800',
-    UTILITIES: '#00bcd4',
-    UTILITY: '#00bcd4',
-    HEALTHCARE: '#e91e63',
-    EDUCATION: '#3f51b5',
-    SAVINGS: '#4caf50',
-    SUBSCRIPTION: '#e91e63',
-    MISCELLANEOUS: '#9e9e9e',
-  }
-  return colors[category?.toUpperCase()] || '#9e9e9e'
+  return constantsStore.getCategoryColor(category)
 }
 
 function goToEntries() {
@@ -202,7 +172,7 @@ function goToEntries() {
 .upcoming-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: white;
+  color: var(--text-primary);
   margin: 0 0 1rem 0;
   letter-spacing: -0.3px;
 }
@@ -217,7 +187,7 @@ function goToEntries() {
 
 .total-label {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -226,7 +196,7 @@ function goToEntries() {
   font-weight: 700;
 
   &.negative {
-    color: #ef4444;
+    color: var(--color-negative);
   }
 }
 
@@ -242,7 +212,7 @@ function goToEntries() {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 0;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+  border-bottom: 1px dashed var(--border-dashed);
   position: relative;
 
   &:last-child {
@@ -259,8 +229,8 @@ function goToEntries() {
 }
 
 .days-remaining-pill {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--bg-pill);
+  color: var(--text-pill);
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.7rem;
@@ -286,8 +256,8 @@ function goToEntries() {
     height: 100%;
     background: repeating-linear-gradient(
       to bottom,
-      rgba(255, 255, 255, 0.2) 0px,
-      rgba(255, 255, 255, 0.2) 4px,
+      var(--border-primary) 0px,
+      var(--border-primary) 4px,
       transparent 4px,
       transparent 8px
     );
@@ -312,7 +282,7 @@ function goToEntries() {
 }
 
 .transaction-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 500;
   white-space: nowrap;
@@ -321,7 +291,7 @@ function goToEntries() {
 }
 
 .transaction-amount {
-  color: white;
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
@@ -331,23 +301,23 @@ function goToEntries() {
 .no-upcoming-transactions {
   padding: 2rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
 .see-all-btn {
   width: 100%;
   padding: 0.875rem;
-  background: rgba(40, 40, 45, 0.95);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-button);
+  border: 2px solid var(--border-secondary);
   border-radius: 12px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
   font-weight: 500;
   transition: all 0.3s ease;
 
   &:hover {
-    background: rgba(50, 50, 55, 0.95);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--bg-button-hover);
+    border-color: var(--border-primary);
   }
 }
 
