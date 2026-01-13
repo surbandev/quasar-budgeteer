@@ -67,11 +67,17 @@
             >
               <div
                 class="transaction-icon"
-                :style="{ backgroundColor: constantsStore.getCategoryColor(transaction.category) }"
+                :class="{ 'has-brand-icon': hasBrandIcon(transaction.name, transaction.category) }"
+                :style="
+                  hasBrandIcon(transaction.name, transaction.category)
+                    ? {}
+                    : { backgroundColor: getIconColor(transaction.name, transaction.category) }
+                "
               >
-                <q-icon
-                  :name="constantsStore.getCategoryIcon(transaction.category)"
-                  size="20px"
+                <BrandIcon
+                  :transaction-name="transaction.name"
+                  :category="transaction.category"
+                  size="24px"
                   color="white"
                 />
               </div>
@@ -100,6 +106,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
+import BrandIcon from '../components/BrandIcon.vue'
 
 const eventsStore = useEventsStore()
 const constantsStore = useConstantsStore()
@@ -226,6 +233,16 @@ function toTitleCase(str) {
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+function getIconColor(transactionName, category) {
+  // Check for brand color first, then fall back to category color
+  const brandColor = constantsStore.getBrandColor(transactionName)
+  return brandColor || constantsStore.getCategoryColor(category)
+}
+
+function hasBrandIcon(transactionName, category) {
+  return constantsStore.hasBrandIcon(transactionName, category)
 }
 
 function viewTransaction(transaction) {
@@ -436,6 +453,11 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+
+  &.has-brand-icon {
+    background-color: transparent !important;
+  }
 }
 
 .transaction-info {

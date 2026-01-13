@@ -179,10 +179,35 @@ export const useConstantsStore = defineStore('constants', () => {
   // Brand icon mapping - maps transaction names to SVG file paths
   // Add new icons by adding entries here and placing the SVG file in src/assets/icons/brands/
   const brandIconMap = {
-    spotify: 'spotify.svg',
-    hulu: 'hulu.svg',
-    experian: 'experian.svg',
-    expirian: 'experian.svg', // Common misspelling
+    spotify: 'Spotify.png',
+    hulu: 'Hulu.jpeg',
+    experian: 'Experian.png',
+    expirian: 'Experian.png', // Common misspelling
+    water: 'water.svg',
+    'water bill': 'water.svg',
+    utility: 'Utility.png',
+    utilities: 'Utility.png',
+    'west knox utility': 'Utility.png',
+    internet: 'Utility.png',
+    kub: 'Utility.png',
+  }
+
+  // Category-based icon mapping - maps category names to icon files
+  const categoryIconMap = {
+    PRIMARY_INCOME: 'paycheck.svg',
+    SECONDARY_INCOME: 'paycheck.svg',
+    SUBSCRIPTION: 'subscription.svg',
+    UTILITY: 'Utility.png',
+    UTILITIES: 'Utility.png',
+    PHONE: 'Phone.jpg',
+    CREDIT_CARD: 'CreditCard.png',
+    MORTGAGE: 'WhiteHouse.png',
+  }
+
+  // Brand color mapping - maps transaction names to brand-specific colors
+  // These override category colors when a brand icon is present
+  const brandColors = {
+    hulu: '#1A2B2C', // Dark teal from original Hulu brand
   }
 
   // Get brand icon SVG path by transaction name
@@ -220,9 +245,51 @@ export const useConstantsStore = defineStore('constants', () => {
     return iconPath || null
   }
 
+  // Get brand icon by category
+  const getBrandIconByCategory = (category) => {
+    if (!category) return null
+    const normalizedCategory = category.toUpperCase()
+    return categoryIconMap[normalizedCategory] || null
+  }
+
   // Check if a transaction has a brand icon available
-  const hasBrandIcon = (transactionName) => {
-    return getBrandIcon(transactionName) !== null
+  const hasBrandIcon = (transactionName, category) => {
+    return getBrandIcon(transactionName) !== null || getBrandIconByCategory(category) !== null
+  }
+
+  // Get brand color by transaction name (returns null if no brand color is set)
+  const getBrandColor = (transactionName) => {
+    if (!transactionName) return null
+
+    // Normalize the name: lowercase, trim, remove special characters
+    const normalizedName = transactionName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s]/g, '')
+
+    // Try exact match first
+    let brandColor = brandColors[normalizedName]
+
+    // If no exact match, try partial matching
+    if (!brandColor) {
+      for (const [key, color] of Object.entries(brandColors)) {
+        if (normalizedName.includes(key) || key.includes(normalizedName)) {
+          brandColor = color
+          break
+        }
+      }
+    }
+
+    // If still no match, try to find by first word
+    if (!brandColor) {
+      const words = normalizedName.split(/\s+/)
+      if (words.length > 0) {
+        const firstWord = words[0]
+        brandColor = brandColors[firstWord]
+      }
+    }
+
+    return brandColor || null
   }
 
   return {
@@ -240,6 +307,8 @@ export const useConstantsStore = defineStore('constants', () => {
     getCategoryColor,
     getCategoryIcon,
     getBrandIcon,
+    getBrandIconByCategory,
     hasBrandIcon,
+    getBrandColor,
   }
 })

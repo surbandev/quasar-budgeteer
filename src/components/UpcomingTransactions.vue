@@ -17,7 +17,12 @@
             <div class="transaction-icon-wrapper">
               <div
                 class="transaction-icon"
-                :style="{ backgroundColor: getCategoryColor(transaction.category) }"
+                :class="{ 'has-brand-icon': hasBrandIcon(transaction.name, transaction.category) }"
+                :style="
+                  hasBrandIcon(transaction.name, transaction.category)
+                    ? {}
+                    : { backgroundColor: getIconColor(transaction.name, transaction.category) }
+                "
               >
                 <BrandIcon
                   :transaction-name="transaction.name"
@@ -160,8 +165,14 @@ function getEventDisplayAmount(event) {
   return 0
 }
 
-function getCategoryColor(category) {
-  return constantsStore.getCategoryColor(category)
+function getIconColor(transactionName, category) {
+  // Check for brand color first, then fall back to category color
+  const brandColor = constantsStore.getBrandColor(transactionName)
+  return brandColor || constantsStore.getCategoryColor(category)
+}
+
+function hasBrandIcon(transactionName, category) {
+  return constantsStore.hasBrandIcon(transactionName, category)
 }
 
 function goToEntries() {
@@ -269,11 +280,16 @@ function goToEntries() {
 .transaction-icon {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+
+  &.has-brand-icon {
+    background-color: transparent !important;
+  }
 }
 
 .transaction-details {

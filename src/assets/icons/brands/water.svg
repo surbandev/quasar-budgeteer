@@ -1,0 +1,49 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Radial gradient for the droplet body -->
+    <radialGradient id="waterGradient" cx="50%" cy="70%">
+      <stop offset="0%" style="stop-color:#81D4FA;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#4FC3F7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0288D1;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Gradient for the main highlight -->
+    <linearGradient id="waterHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.95" />
+      <stop offset="40%" style="stop-color:#FFFFFF;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </linearGradient>
+    
+    <!-- Gradient for secondary highlight -->
+    <radialGradient id="waterHighlight2" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Main droplet shape (teardrop) - point at top -->
+  <path 
+    d="M12 21.5 C14.5 21.5, 18.5 19.5, 18.5 15 C18.5 10.5, 14.5 4.5, 12 2.5 C9.5 4.5, 5.5 10.5, 5.5 15 C5.5 19.5, 9.5 21.5, 12 21.5 Z" 
+    fill="url(#waterGradient)"
+  />
+  
+  <!-- Darker edge on right and bottom for depth -->
+  <path 
+    d="M12 21.5 C14.5 21.5, 18.5 19.5, 18.5 15 C18.5 10.5, 14.5 4.5, 12 2.5 C9.5 4.5, 5.5 10.5, 5.5 15 C5.5 19.5, 9.5 21.5, 12 21.5 Z" 
+    fill="none"
+    stroke="#01579B"
+    stroke-width="0.3"
+    stroke-opacity="0.3"
+  />
+  
+  <!-- Smaller highlight on lower-right (now upper-right after flip) -->
+  <ellipse 
+    cx="15" 
+    cy="10" 
+    rx="2.5" 
+    ry="3" 
+    fill="url(#waterHighlight2)"
+    transform="rotate(-50 15 10)"
+  />
+</svg>
+

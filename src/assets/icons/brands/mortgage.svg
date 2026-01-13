@@ -1,0 +1,30 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient for mortgage/house icon -->
+    <linearGradient id="houseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7B1FA2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6A1B9A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- House base -->
+  <rect x="6" y="13" width="12" height="7" rx="0.5" fill="url(#houseGradient)"/>
+  
+  <!-- House roof (triangle) -->
+  <path d="M 5 13 L 12 6 L 19 13 Z" fill="url(#houseGradient)"/>
+  
+  <!-- Door -->
+  <rect x="10" y="15" width="4" height="5" rx="0.3" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="13" cy="17.5" r="0.4" fill="#FFFFFF" opacity="0.5"/>
+  
+  <!-- Windows -->
+  <rect x="7.5" y="14" width="2" height="2" rx="0.2" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="14.5" y="14" width="2" height="2" rx="0.2" fill="#FFFFFF" opacity="0.3"/>
+  
+  <!-- Window cross lines -->
+  <line x1="8.5" y1="14" x2="8.5" y2="16" stroke="#FFFFFF" stroke-width="0.3" opacity="0.4"/>
+  <line x1="7.5" y1="15" x2="9.5" y2="15" stroke="#FFFFFF" stroke-width="0.3" opacity="0.4"/>
+  <line x1="15.5" y1="14" x2="15.5" y2="16" stroke="#FFFFFF" stroke-width="0.3" opacity="0.4"/>
+  <line x1="14.5" y1="15" x2="16.5" y2="15" stroke="#FFFFFF" stroke-width="0.3" opacity="0.4"/>
+</svg>
