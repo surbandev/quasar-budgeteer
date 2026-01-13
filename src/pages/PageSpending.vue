@@ -128,8 +128,9 @@
                             backgroundColor: category.color,
                           }"
                         >
-                          <q-icon
-                            :name="constantsStore.getCategoryIcon(transaction.category)"
+                          <BrandIcon
+                            :transaction-name="transaction.name"
+                            :category="transaction.category"
                             size="18px"
                             color="white"
                           />
@@ -170,6 +171,7 @@ import { Pie } from 'vue-chartjs'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
+import BrandIcon from '../components/BrandIcon.vue'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 

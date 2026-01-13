@@ -202,6 +202,8 @@ export const useConstantsStore = defineStore('constants', () => {
     PHONE: 'Phone.jpg',
     CREDIT_CARD: 'CreditCard.png',
     MORTGAGE: 'WhiteHouse.png',
+    INSURANCE: 'InsuranceUmbrella.png',
+    AUTO_LOAN: 'AutoLoan.png',
   }
 
   // Brand color mapping - maps transaction names to brand-specific colors

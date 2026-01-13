@@ -16,7 +16,7 @@
       <h2 class="tools-title">Tools</h2>
 
       <div class="tools-layout">
-        <!-- Tools row: Profile Settings, User Settings, Feedback -->
+        <!-- Tools row: Profile Settings, User Settings, Feedback, Slice -->
         <div class="tools-top-row">
           <div class="tool-bubble" @click="goToProfileSettings">
             <q-icon name="person" class="tool-icon" />
@@ -31,6 +31,11 @@
           <div class="tool-bubble" @click="goToFeedback">
             <q-icon name="chat_bubble" class="tool-icon" />
             <span class="tool-name">Feedback</span>
+          </div>
+
+          <div class="tool-bubble" @click="goToSlice">
+            <q-icon name="pie_chart" class="tool-icon" />
+            <span class="tool-name">Slice</span>
           </div>
         </div>
       </div>
@@ -53,6 +58,10 @@ function goToProfileSettings() {
 
 function goToUserSettings() {
   router.push('/user-settings')
+}
+
+function goToSlice() {
+  router.push('/slice')
 }
 </script>
 
