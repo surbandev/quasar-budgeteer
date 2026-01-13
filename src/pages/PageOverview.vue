@@ -1,6 +1,6 @@
 <template>
-  <q-page class="dashboard-page">
-    <div class="dashboard-container">
+  <q-page class="overview-page">
+    <div class="overview-container">
       <!-- Loading State -->
       <q-inner-loading :showing="loading" />
 
@@ -425,7 +425,7 @@ async function handleProfileChange(profile) {
   }
 }
 
-async function initializeDashboard() {
+async function initializeOverview() {
   try {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -452,7 +452,7 @@ async function initializeDashboard() {
 
     await loadProfileData()
   } catch (error) {
-    console.error('Error initializing dashboard:', error)
+    console.error('Error initializing overview:', error)
     router.push('/login')
   } finally {
     loading.value = false
@@ -492,7 +492,7 @@ async function loadProfileData() {
 }
 
 onMounted(async () => {
-  await initializeDashboard()
+  await initializeOverview()
 })
 
 watch(currentProfile, async (newProfile) => {
@@ -505,7 +505,7 @@ watch(currentProfile, async (newProfile) => {
 </script>
 
 <style scoped lang="scss">
-.dashboard-page {
+.overview-page {
   padding: 1rem;
   min-height: 100vh;
   background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
@@ -513,7 +513,7 @@ watch(currentProfile, async (newProfile) => {
   padding-bottom: 2rem;
 }
 
-.dashboard-container {
+.overview-container {
   max-width: 1400px;
   margin: 0 auto;
   position: relative;
@@ -522,7 +522,7 @@ watch(currentProfile, async (newProfile) => {
 
 // Mobile optimization
 @media (max-width: 600px) {
-  .dashboard-page {
+  .overview-page {
     padding: 0.75rem;
   }
 }
@@ -910,13 +910,13 @@ watch(currentProfile, async (newProfile) => {
 
 // Tablet and desktop optimizations
 @media (min-width: 1024px) {
-  .dashboard-page {
+  .overview-page {
     padding: 2rem;
   }
 }
 
 @media (max-width: 768px) {
-  .dashboard-page {
+  .overview-page {
     padding: 1rem;
   }
 

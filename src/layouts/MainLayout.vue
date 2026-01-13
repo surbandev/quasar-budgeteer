@@ -12,13 +12,7 @@
           align="center"
           @update:model-value="onTabChange"
         >
-          <q-tab
-            v-for="tab in tabs"
-            :key="tab.name"
-            :name="tab.name"
-            :label="tab.label"
-            no-caps
-          />
+          <q-tab v-for="tab in tabs" :key="tab.name" :name="tab.name" :label="tab.label" no-caps />
         </q-tabs>
       </div>
     </q-header>
@@ -35,13 +29,7 @@
           align="center"
           @update:model-value="onTabChange"
         >
-          <q-tab
-            v-for="tab in tabs"
-            :key="tab.name"
-            :name="tab.name"
-            :label="tab.label"
-            no-caps
-          />
+          <q-tab v-for="tab in tabs" :key="tab.name" :name="tab.name" :label="tab.label" no-caps />
         </q-tabs>
       </div>
     </q-header>
@@ -70,7 +58,7 @@
       :class="{
         'with-desktop-sidebar': $q.screen.gt.md,
         'with-mobile-header': $q.screen.lt.lg,
-        'with-desktop-header': $q.screen.gt.md
+        'with-desktop-header': $q.screen.gt.md,
       }"
     >
       <router-view />
@@ -109,7 +97,9 @@ const bottomTab = ref('overview')
 // Determine which tabs to show based on current route
 const isCalendarRoute = computed(() => {
   // Show calendar tabs if on calendar page or transaction page with eventID (editing from calendar)
-  return route.path.startsWith('/calendar') || (route.path === '/transaction' && route.query.eventID)
+  return (
+    route.path.startsWith('/calendar') || (route.path === '/transaction' && route.query.eventID)
+  )
 })
 
 const tabs = computed(() => {
@@ -117,20 +107,20 @@ const tabs = computed(() => {
     return [
       { name: 'calendar', label: 'CALENDAR' },
       { name: 'scenarios', label: 'SCENARIOS' },
-      { name: 'transaction', label: 'TRANSACTION' }
+      { name: 'transaction', label: 'TRANSACTION' },
     ]
   }
   return [
     { name: 'overview', label: 'OVERVIEW' },
     { name: 'spending', label: 'SPENDING' },
-    { name: 'list', label: 'LIST' }
+    { name: 'list', label: 'LIST' },
   ]
 })
 
 function onTabChange(tabName) {
-  // Dashboard tabs
+  // Overview tabs
   if (tabName === 'overview') {
-    router.push('/dashboard')
+    router.push('/overview')
   } else if (tabName === 'spending') {
     router.push('/spending')
   } else if (tabName === 'list') {
@@ -148,8 +138,8 @@ function onTabChange(tabName) {
 
 function onBottomTabChange(tabName) {
   if (tabName === 'overview') {
-    if (route.path !== '/dashboard') {
-      router.push('/dashboard')
+    if (route.path !== '/overview') {
+      router.push('/overview')
     }
   } else if (tabName === 'budget') {
     if (route.path !== '/calendar' || route.query.view !== 'calendar') {
@@ -166,8 +156,8 @@ function onBottomTabChange(tabName) {
 watch(
   () => [route.path, route.query.view, route.query.eventID],
   ([newPath, viewQuery, eventID]) => {
-    // Dashboard routes
-    if (newPath === '/dashboard') {
+    // Overview routes
+    if (newPath === '/overview') {
       currentTab.value = 'overview'
       bottomTab.value = 'overview'
     } else if (newPath === '/spending') {

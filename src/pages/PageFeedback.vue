@@ -152,7 +152,7 @@ async function submitFeedback() {
 }
 
 function goBack() {
-  router.push('/dashboard')
+  router.push('/overview')
 }
 </script>
 

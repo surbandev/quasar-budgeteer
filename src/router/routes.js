@@ -19,9 +19,9 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('pages/PageDashboard.vue'),
+        path: 'overview',
+        name: 'Overview',
+        component: () => import('pages/PageOverview.vue'),
         meta: { requiresAuth: true },
       },
       {

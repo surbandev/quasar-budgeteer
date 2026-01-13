@@ -25,11 +25,11 @@
           <div v-if="navigationExpanded" class="nav-items">
             <div
               class="nav-item"
-              :class="{ active: $route.name === 'Dashboard' }"
-              @click="goToDashboard"
+              :class="{ active: $route.name === 'Overview' }"
+              @click="goToOverview"
             >
               <q-icon name="dashboard" class="nav-icon" />
-              <span class="nav-label">Dashboard</span>
+              <span class="nav-label">Overview</span>
             </div>
 
             <div
@@ -195,8 +195,8 @@ function toggleSettings() {
   settingsExpanded.value = !settingsExpanded.value
 }
 
-function goToDashboard() {
-  router.push('/dashboard')
+function goToOverview() {
+  router.push('/overview')
   emit('close-sidebar')
 }
 
@@ -244,14 +244,14 @@ async function selectProfile(profile) {
     console.log('Selecting profile:', profile)
     await profileStore.setCurrentProfile(profile)
 
-    if (router.currentRoute.value.name === 'Dashboard') {
-      // If already on dashboard, use event bus to trigger refresh
+    if (router.currentRoute.value.name === 'Overview') {
+      // If already on overview, use event bus to trigger refresh
       if (window.$eventBus) {
         window.$eventBus.emit('profile-changed', profile)
       }
-      router.replace('/dashboard')
+      router.replace('/overview')
     } else {
-      router.push('/dashboard')
+      router.push('/overview')
     }
     emit('close-sidebar')
   } catch (error) {

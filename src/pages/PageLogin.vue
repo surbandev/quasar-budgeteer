@@ -192,7 +192,7 @@ async function handleLogin() {
       profileStore.setCurrentProfile({ id: authStore.getUserID })
     }
 
-    router.push('/dashboard')
+    router.push('/overview')
   } catch (error) {
     console.error('Login failed:', error)
 

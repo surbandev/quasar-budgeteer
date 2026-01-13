@@ -359,7 +359,7 @@ async function saveSettings() {
 }
 
 function goBack() {
-  router.push('/dashboard')
+  router.push('/overview')
 }
 
 onMounted(async () => {
@@ -371,7 +371,7 @@ watch(
   () => userSettings.value.theme,
   (newTheme) => {
     localStorage.setItem('theme', newTheme)
-  }
+  },
 )
 </script>
 

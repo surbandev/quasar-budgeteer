@@ -41,7 +41,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     if (requiresAuth && !token) {
       next('/login')
     } else if ((to.path === '/login' || to.path === '/register') && token) {
-      next('/dashboard')
+      next('/overview')
     } else {
       next()
     }
