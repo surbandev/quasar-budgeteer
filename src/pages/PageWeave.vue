@@ -69,6 +69,7 @@
       >
         <div class="bird-body"></div>
         <div class="bird-wing"></div>
+        <div class="bird-eye"></div>
       </div>
 
       <!-- Ground -->
@@ -95,7 +96,7 @@
 
     <!-- Bird selector (far left) + Score (center) in brown dirt area at bottom -->
     <div class="score-display-bottom">
-      <div class="bird-selector" @click.stop>
+      <div class="bird-selector" @click.stop @touchstart.stop.prevent @touchend.stop>
         <q-btn
           flat
           dense
@@ -104,6 +105,7 @@
           class="bird-selector-btn"
           :disable="gameStarted"
           @click="prevBird"
+          @touchend.stop.prevent="prevBird"
         />
         <div
           class="bird-preview"
@@ -112,6 +114,7 @@
         >
           <div class="bird-preview-body"></div>
           <div class="bird-preview-wing"></div>
+          <div class="bird-preview-eye"></div>
         </div>
         <q-btn
           flat
@@ -121,6 +124,7 @@
           class="bird-selector-btn"
           :disable="gameStarted"
           @click="nextBird"
+          @touchend.stop.prevent="nextBird"
         />
       </div>
       <div class="score-number-wrap">
@@ -203,7 +207,8 @@ const PIPE_SPAWN_INTERVAL_MAX = 4500
 const GROUND_TOP_PERCENT = 78
 
 const gameOver = ref(false)
-const score = ref(0)
+const score = ref(0) // Cumulative score across all months
+const monthScore = ref(0) // Score for current month only (for completion check)
 const bestScore = ref(0)
 const birdY = ref(40)
 const birdVelocity = ref(0)
@@ -225,6 +230,7 @@ const showCelebration = ref(false)
 const currentMonthDate = ref(null)
 let celebrationTimeout = null
 const completedMonths = ref(new Set())
+const isAdvancingMonth = ref(false)
 
 // Month bills from events (same logic as Slice: DEBIT, not SAVINGS, one month)
 const filteredEvents = computed(() => eventsStore.filteredEvents || [])
@@ -264,7 +270,7 @@ function formatCurrency(amount) {
 const billsRemaining = computed(() => {
   const total = monthBills.value.length
   if (total === 0) return 0
-  return Math.max(0, total - score.value)
+  return Math.max(0, total - monthScore.value)
 })
 
 function createShards() {
@@ -548,6 +554,7 @@ function gameLoop() {
         if (!p.scored && next.x < viewportWidth.value * (BIRD_X_PERCENT / 100)) {
           next.scored = true
           score.value += 1
+          monthScore.value += 1
           if (score.value > bestScore.value) {
             bestScore.value = score.value
             saveBestScore()
@@ -562,11 +569,15 @@ function gameLoop() {
 
     if (
       monthBills.value.length > 0 &&
-      score.value >= monthBills.value.length &&
+      monthScore.value >= monthBills.value.length &&
+      monthScore.value > 0 &&
       !showCelebration.value &&
-      currentMonthDate.value
+      !isAdvancingMonth.value &&
+      currentMonthDate.value &&
+      gameStarted.value
     ) {
       showCelebration.value = true
+      isAdvancingMonth.value = true
       markMonthCompleted(currentMonthDate.value)
       if (celebrationTimeout) clearTimeout(celebrationTimeout)
       celebrationTimeout = setTimeout(() => {
@@ -618,13 +629,21 @@ function startPipeSpawning() {
 }
 
 async function advanceToNextMonth() {
+  // Prevent multiple calls - if flag is already false, we've already advanced
+  if (!isAdvancingMonth.value) {
+    return
+  }
+
   if (celebrationTimeout) {
     clearTimeout(celebrationTimeout)
     celebrationTimeout = null
   }
   showCelebration.value = false
 
-  if (!currentMonthDate.value) return
+  if (!currentMonthDate.value) {
+    isAdvancingMonth.value = false
+    return
+  }
   const d = currentMonthDate.value
   const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1)
   currentMonthDate.value = nextMonth
@@ -636,19 +655,22 @@ async function advanceToNextMonth() {
     console.error('Error loading next month:', err)
   }
 
-  score.value = 0
+  // Reset month score for the new month, but keep cumulative score
+  monthScore.value = 0
   nextBillIndex.value = 0
   pipes.value = []
   if (pipeSpawnTimer) {
     clearTimeout(pipeSpawnTimer)
     pipeSpawnTimer = null
   }
+  isAdvancingMonth.value = false
   startPipeSpawning()
 }
 
 function restart() {
   gameOver.value = false
   score.value = 0
+  monthScore.value = 0
   birdY.value = 40
   birdVelocity.value = 0
   scrollOffset.value = 0
@@ -656,6 +678,7 @@ function restart() {
   pipes.value = []
   nextBillIndex.value = 0
   showCelebration.value = false
+  isAdvancingMonth.value = false
   if (celebrationTimeout) {
     clearTimeout(celebrationTimeout)
     celebrationTimeout = null
@@ -1037,23 +1060,24 @@ onUnmounted(() => {
 .bird-body::before {
   content: '';
   position: absolute;
-  right: -4px;
+  right: -11px;
   top: 50%;
   transform: translateY(-50%);
   width: 0;
   height: 0;
-  border: 6px solid transparent;
-  border-left-color: #ff9800;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #ff9800;
   border-right: none;
 }
 
 .bird-wing {
   position: absolute;
-  left: 2px;
+  left: -6px;
   top: 50%;
   transform: translateY(-50%);
-  width: 14px;
-  height: 8px;
+  width: 20px;
+  height: 12px;
   background: rgba(255, 235, 59, 0.9);
   border-radius: 50%;
   border: 1px solid #f57c00;
@@ -1065,6 +1089,29 @@ onUnmounted(() => {
   transform: translateY(-50%) rotate(-35deg) scaleX(1.2);
 }
 
+.bird-eye {
+  position: absolute;
+  right: 4px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #000;
+  z-index: 2;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.bird-eye::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+}
+
 // Bird skin variants (game bird + preview)
 .bird-skin-red .bird-body,
 .bird-skin-red .bird-preview-body {
@@ -1073,7 +1120,10 @@ onUnmounted(() => {
 }
 .bird-skin-red .bird-body::before,
 .bird-skin-red .bird-preview-body::before {
-  border-left-color: #e65100;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #c62828;
+  border-right: none;
 }
 .bird-skin-red .bird-wing,
 .bird-skin-red .bird-preview-wing {
@@ -1088,7 +1138,10 @@ onUnmounted(() => {
 }
 .bird-skin-blue .bird-body::before,
 .bird-skin-blue .bird-preview-body::before {
-  border-left-color: #0d47a1;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #1565c0;
+  border-right: none;
 }
 .bird-skin-blue .bird-wing,
 .bird-skin-blue .bird-preview-wing {
@@ -1103,7 +1156,10 @@ onUnmounted(() => {
 }
 .bird-skin-green .bird-body::before,
 .bird-skin-green .bird-preview-body::before {
-  border-left-color: #558b2f;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #2e7d32;
+  border-right: none;
 }
 .bird-skin-green .bird-wing,
 .bird-skin-green .bird-preview-wing {
@@ -1118,7 +1174,10 @@ onUnmounted(() => {
 }
 .bird-skin-purple .bird-body::before,
 .bird-skin-purple .bird-preview-body::before {
-  border-left-color: #7b1fa2;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #6a1b9a;
+  border-right: none;
 }
 .bird-skin-purple .bird-wing,
 .bird-skin-purple .bird-preview-wing {
@@ -1133,7 +1192,10 @@ onUnmounted(() => {
 }
 .bird-skin-teal .bird-body::before,
 .bird-skin-teal .bird-preview-body::before {
-  border-left-color: #00796b;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #00695c;
+  border-right: none;
 }
 .bird-skin-teal .bird-wing,
 .bird-skin-teal .bird-preview-wing {
@@ -1421,6 +1483,7 @@ onUnmounted(() => {
   min-width: 40px;
   min-height: 40px;
   font-size: 1.25rem;
+  touch-action: manipulation;
   &:disabled {
     opacity: 0.5;
   }
@@ -1439,32 +1502,58 @@ onUnmounted(() => {
   border-radius: 50%;
   border: 2px solid #f57c00;
   background: linear-gradient(135deg, #ffeb3b 0%, #ffc107 40%, #ff9800 100%);
-  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.4),
+    -1px -1px 0 rgba(0, 0, 0, 0.15);
 }
 
 .bird-preview-body::before {
   content: '';
   position: absolute;
-  right: -4px;
+  right: -11px;
   top: 50%;
   transform: translateY(-50%);
   width: 0;
   height: 0;
-  border: 5px solid transparent;
-  border-left-color: #ff9800;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 12px solid #ff9800;
   border-right: none;
 }
 
 .bird-preview-wing {
   position: absolute;
-  left: 3px;
+  left: -6px;
   top: 50%;
   transform: translateY(-50%);
-  width: 14px;
-  height: 8px;
+  width: 20px;
+  height: 12px;
   border-radius: 50%;
   background: rgba(255, 235, 59, 0.9);
   border: 1px solid #f57c00;
+}
+
+.bird-preview-eye {
+  position: absolute;
+  right: 4px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #000;
+  z-index: 2;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.bird-preview-eye::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
 }
 
 // Game over
