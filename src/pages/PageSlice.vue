@@ -22,6 +22,26 @@
         </div>
       </div>
 
+      <!-- Shatter bursts when bills are sliced -->
+      <div
+        v-for="burst in shatterBursts"
+        :key="burst.id"
+        class="shatter-burst"
+        :style="{ left: burst.x + 'px', top: burst.y + 'px' }"
+      >
+        <div
+          v-for="(shard, si) in burst.shards"
+          :key="si"
+          class="shatter-shard"
+          :style="{
+            '--end-x': shard.endX + 'px',
+            '--end-y': shard.endY + 'px',
+            '--rot': shard.rotation + 'deg',
+            '--delay': shard.delay + 'ms',
+          }"
+        />
+      </div>
+
       <!-- Swipe trail SVG -->
       <svg class="swipe-trail" v-if="swipePoints.length > 1">
         <path
@@ -113,7 +133,7 @@ const currentLevel = ref(1)
 // Round-start prompt: show "Slice those bills!" then fade as round starts
 const showSlicePrompt = ref(false)
 const promptFading = ref(false)
-let promptTimeouts = []
+const promptTimeouts = ref([])
 
 // Touch/swipe tracking
 const isSwiping = ref(false)
@@ -121,6 +141,10 @@ const swipePoints = ref([])
 
 // Bill refs
 const billRefs = ref([])
+
+// Shatter animation: bursts of fragments when a bill is sliced
+const shatterBursts = ref([])
+let shatterIdNext = 0
 
 // Get current month's events
 const filteredEvents = computed(() => eventsStore.filteredEvents || [])
@@ -227,16 +251,16 @@ function setBillRef(el, index) {
 
 // Show "Slice those bills!" at round start, then fade out
 function startRoundPrompt() {
-  promptTimeouts.forEach((id) => clearTimeout(id))
-  promptTimeouts = []
+  promptTimeouts.value.forEach((id) => clearTimeout(id))
+  promptTimeouts.value = []
   showSlicePrompt.value = true
   promptFading.value = false
-  promptTimeouts.push(
+  promptTimeouts.value.push(
     setTimeout(() => {
       promptFading.value = true
     }, 1800),
   )
-  promptTimeouts.push(
+  promptTimeouts.value.push(
     setTimeout(() => {
       showSlicePrompt.value = false
       promptFading.value = false
@@ -353,16 +377,49 @@ function checkCollisions(x, y) {
 
     // Check if swipe point intersects with bill element
     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-      catchBill(bill)
+      catchBill(bill, index)
     }
   })
 }
 
+// Create shard fragments for shatter effect (end position in px from center)
+function createShards() {
+  const count = 12
+  const shards = []
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5
+    const dist = 60 + Math.random() * 50
+    shards.push({
+      endX: Math.cos(angle) * dist,
+      endY: Math.sin(angle) * dist,
+      rotation: (Math.random() - 0.5) * 360,
+      delay: Math.floor(Math.random() * 80),
+    })
+  }
+  return shards
+}
+
 // Catch a bill
-function catchBill(bill) {
+function catchBill(bill, index) {
   if (bill.caught) return
 
   bill.caught = true
+
+  // Shatter at bill position
+  const billEl = billRefs.value[index]
+  if (billEl) {
+    const rect = billEl.getBoundingClientRect()
+    const id = ++shatterIdNext
+    shatterBursts.value.push({
+      id,
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      shards: createShards(),
+    })
+    setTimeout(() => {
+      shatterBursts.value = shatterBursts.value.filter((b) => b.id !== id)
+    }, 550)
+  }
 
   // Add to savings
   const amount = parseFloat(bill.amount)
@@ -432,7 +489,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  promptTimeouts.forEach((id) => clearTimeout(id))
+  promptTimeouts.value.forEach((id) => clearTimeout(id))
   if (timerInterval.value) {
     clearInterval(timerInterval.value)
   }
@@ -465,6 +522,43 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
+}
+
+// Shatter effect when a bill is sliced
+.shatter-burst {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+}
+
+.shatter-shard {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 30%, #f093fb 60%, #f5576c 100%);
+  border-radius: 1px;
+  box-shadow:
+    0 0 8px rgba(102, 126, 234, 0.8),
+    0 0 12px rgba(240, 147, 251, 0.5);
+  animation: shardFly 0.45s ease-out var(--delay, 0ms) forwards;
+  opacity: 0;
+  transform: translate(0, 0) rotate(0deg) scale(1);
+}
+
+@keyframes shardFly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--end-x), var(--end-y)) rotate(var(--rot)) scale(0.2);
+  }
 }
 
 .swipe-trail {
