@@ -56,9 +56,7 @@
           <h2 v-if="gameWon" class="victory-title">Level {{ currentLevel - 1 }} Complete!</h2>
           <h2 v-else class="defeat-title">Time's Up!</h2>
           <p class="game-stats">You saved {{ formatCurrency(gameSavings) }}</p>
-          <p class="game-stats" v-if="!gameWon">
-            Bills target: {{ formatCurrency(gameBills) }}
-          </p>
+          <p class="game-stats" v-if="!gameWon">Bills target: {{ formatCurrency(gameBills) }}</p>
           <div class="button-group">
             <q-btn
               v-if="gameWon && currentLevel === 2"
@@ -70,6 +68,17 @@
           </div>
         </div>
       </div>
+
+      <!-- Round start prompt: "Slice those bills!" -->
+      <Transition name="prompt-fade">
+        <div
+          v-if="showSlicePrompt"
+          class="slice-prompt"
+          :class="{ 'slice-prompt--fade': promptFading }"
+        >
+          <span class="slice-prompt-text">Slice those bills!</span>
+        </div>
+      </Transition>
 
       <q-inner-loading :showing="loading" />
     </div>
@@ -100,6 +109,11 @@ const gameOver = ref(false)
 const gameWon = ref(false)
 const timerInterval = ref(null)
 const currentLevel = ref(1)
+
+// Round-start prompt: show "Slice those bills!" then fade as round starts
+const showSlicePrompt = ref(false)
+const promptFading = ref(false)
+let promptTimeouts = []
 
 // Touch/swipe tracking
 const isSwiping = ref(false)
@@ -211,6 +225,25 @@ function setBillRef(el, index) {
   }
 }
 
+// Show "Slice those bills!" at round start, then fade out
+function startRoundPrompt() {
+  promptTimeouts.forEach((id) => clearTimeout(id))
+  promptTimeouts = []
+  showSlicePrompt.value = true
+  promptFading.value = false
+  promptTimeouts.push(
+    setTimeout(() => {
+      promptFading.value = true
+    }, 1800),
+  )
+  promptTimeouts.push(
+    setTimeout(() => {
+      showSlicePrompt.value = false
+      promptFading.value = false
+    }, 2800),
+  )
+}
+
 // Start game timer
 function startTimer() {
   timerInterval.value = setInterval(() => {
@@ -248,6 +281,7 @@ function continueToNextLevel() {
   // Reinitialize bills
   initializeSlidingBills()
 
+  startRoundPrompt()
   startTimer()
 }
 
@@ -265,6 +299,7 @@ function restartGame() {
   // Reinitialize bills
   initializeSlidingBills()
 
+  startRoundPrompt()
   startTimer()
 }
 
@@ -317,12 +352,7 @@ function checkCollisions(x, y) {
     const rect = billEl.getBoundingClientRect()
 
     // Check if swipe point intersects with bill element
-    if (
-      x >= rect.left &&
-      x <= rect.right &&
-      y >= rect.top &&
-      y <= rect.bottom
-    ) {
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
       catchBill(bill)
     }
   })
@@ -392,7 +422,7 @@ onMounted(async () => {
     // Initialize sliding bills
     initializeSlidingBills()
 
-    // Start timer
+    startRoundPrompt()
     startTimer()
   } catch (error) {
     console.error('Error loading slice data:', error)
@@ -402,6 +432,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  promptTimeouts.forEach((id) => clearTimeout(id))
   if (timerInterval.value) {
     clearInterval(timerInterval.value)
   }
@@ -448,7 +479,8 @@ onUnmounted(() => {
 
 .swipe-path {
   opacity: 0.8;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 16px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8))
+    drop-shadow(0 0 16px rgba(255, 255, 255, 0.4));
   animation: swipeFade 0.5s ease-out forwards;
 }
 
@@ -707,6 +739,43 @@ onUnmounted(() => {
     opacity: 0;
     transform: rotate(-10deg);
   }
+}
+
+// Round-start prompt
+.slice-prompt {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.8s ease-out;
+}
+
+.slice-prompt--fade {
+  opacity: 0;
+}
+
+.slice-prompt-text {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  font-weight: 700;
+  color: white;
+  text-shadow:
+    0 0 20px rgba(147, 51, 234, 0.8),
+    0 0 40px rgba(147, 51, 234, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.02em;
+}
+
+.prompt-fade-enter-active,
+.prompt-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.prompt-fade-enter-from,
+.prompt-fade-leave-to {
+  opacity: 0;
 }
 
 .slice-container {
