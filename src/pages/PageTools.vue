@@ -37,6 +37,11 @@
             <q-icon name="content_cut" class="tool-icon" />
             <span class="tool-name">Slice</span>
           </div>
+
+          <div class="tool-bubble" @click="goToWeave">
+            <q-icon name="flutter_dash" class="tool-icon" />
+            <span class="tool-name">Weave</span>
+          </div>
         </div>
       </div>
     </div>
@@ -62,6 +67,10 @@ function goToUserSettings() {
 
 function goToSlice() {
   router.push('/slice')
+}
+
+function goToWeave() {
+  router.push('/weave')
 }
 </script>
 
