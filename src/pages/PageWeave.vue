@@ -34,7 +34,11 @@
       </div>
 
       <!-- Bird -->
-      <div class="bird" :class="{ flapping: isFlapping }" :style="birdStyle">
+      <div
+        class="bird"
+        :class="[{ flapping: isFlapping }, 'bird-skin-' + birdSkins[selectedBirdIndex].id]"
+        :style="birdStyle"
+      >
         <div class="bird-body"></div>
         <div class="bird-wing"></div>
       </div>
@@ -52,15 +56,66 @@
       </div>
     </div>
 
-    <!-- Score -->
-    <div class="score-display">Score: {{ score }}</div>
+    <!-- Current score at top -->
+    <div class="score-display-top">
+      <span class="score-display-top-label">Current</span>
+      <span class="score-display-top-value">{{ score }}</span>
+    </div>
 
-    <!-- Game Over overlay -->
-    <div v-if="gameOver" class="game-over-overlay" @click.stop>
-      <div class="game-over-box" @click.stop>
+    <!-- Bird selector (far left) + Score (center) in brown dirt area at bottom -->
+    <div class="score-display-bottom">
+      <div class="bird-selector" @click.stop>
+        <q-btn
+          flat
+          dense
+          round
+          icon="chevron_left"
+          class="bird-selector-btn"
+          :disable="gameStarted"
+          @click="prevBird"
+        />
+        <div
+          class="bird-preview"
+          :class="'bird-skin-' + birdSkins[selectedBirdIndex].id"
+          aria-label="Selected bird"
+        >
+          <div class="bird-preview-body"></div>
+          <div class="bird-preview-wing"></div>
+        </div>
+        <q-btn
+          flat
+          dense
+          round
+          icon="chevron_right"
+          class="bird-selector-btn"
+          :disable="gameStarted"
+          @click="nextBird"
+        />
+      </div>
+      <div class="score-number-wrap">
+        <span class="score-number-label">Best</span>
+        <span class="score-number">{{ bestScore }}</span>
+      </div>
+      <div class="bird-selector-spacer" aria-hidden="true"></div>
+    </div>
+
+    <!-- Game Over overlay - stop touch so Play Again works on mobile -->
+    <div
+      v-if="gameOver"
+      class="game-over-overlay"
+      @click.stop
+      @touchstart.stop.prevent
+      @touchend.stop.prevent
+    >
+      <div class="game-over-box" @click.stop @touchstart.stop @touchend.stop>
         <h2 class="game-over-title">Game Over</h2>
         <p class="game-over-score">Score: {{ score }}</p>
-        <q-btn class="restart-btn" label="Play Again" @click="restart" />
+        <q-btn
+          class="restart-btn"
+          label="Play Again"
+          @click="restart"
+          @touchend.prevent="onRestartTouch"
+        />
       </div>
     </div>
 
@@ -79,7 +134,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 const BIRD_X_PERCENT = 22
 const GRAVITY = 0.1
 const FLAP_STRENGTH = -1.5
-const PIPE_SPEED = 3
+const PIPE_SPEED_BASE = 3
+const PIPE_SPEED_MAX = 12
+const PIPE_SPEED_RAMP_PER_SEC = 0.05
 const PIPE_GAP = 180
 const PIPE_WIDTH = 70
 const PIPE_SPAWN_INTERVAL_MIN = 2600
@@ -88,6 +145,7 @@ const GROUND_TOP_PERCENT = 78
 
 const gameOver = ref(false)
 const score = ref(0)
+const bestScore = ref(0)
 const birdY = ref(40)
 const birdVelocity = ref(0)
 const pipes = ref([])
@@ -96,6 +154,71 @@ const isFlapping = ref(false)
 const viewportWidth = ref(400)
 const viewportHeight = ref(600)
 const scrollOffset = ref(0)
+const gameStartTime = ref(0)
+
+// Bird skins (inspired by Flappy Bird character select)
+const birdSkins = [
+  { id: 'yellow', name: 'Yellow' },
+  { id: 'red', name: 'Red' },
+  { id: 'blue', name: 'Blue' },
+  { id: 'green', name: 'Green' },
+  { id: 'purple', name: 'Purple' },
+  { id: 'teal', name: 'Teal' },
+]
+const selectedBirdIndex = ref(0)
+
+function prevBird() {
+  if (gameStarted.value) return
+  selectedBirdIndex.value = (selectedBirdIndex.value - 1 + birdSkins.length) % birdSkins.length
+  saveSelectedBird()
+}
+
+function nextBird() {
+  if (gameStarted.value) return
+  selectedBirdIndex.value = (selectedBirdIndex.value + 1) % birdSkins.length
+  saveSelectedBird()
+}
+
+function saveSelectedBird() {
+  try {
+    localStorage.setItem('weave-bird-index', String(selectedBirdIndex.value))
+  } catch {
+    // ignore localStorage errors
+  }
+}
+
+function loadSelectedBird() {
+  try {
+    const s = localStorage.getItem('weave-bird-index')
+    if (s != null) {
+      const i = parseInt(s, 10)
+      if (i >= 0 && i < birdSkins.length) selectedBirdIndex.value = i
+    }
+  } catch {
+    // ignore localStorage errors
+  }
+}
+
+function saveBestScore() {
+  try {
+    localStorage.setItem('weave-best-score', String(bestScore.value))
+  } catch {
+    // ignore localStorage errors
+  }
+}
+
+function loadBestScore() {
+  try {
+    const s = localStorage.getItem('weave-best-score')
+    if (s != null) {
+      const n = parseInt(s, 10)
+      if (n >= 0) bestScore.value = n
+    }
+  } catch {
+    // ignore localStorage errors
+  }
+}
+
 let animationId = null
 let pipeSpawnTimer = null
 let resizeObserver = null
@@ -146,6 +269,7 @@ function flap(e) {
   e?.preventDefault?.()
   if (!gameStarted.value) {
     gameStarted.value = true
+    gameStartTime.value = Date.now()
     showStartPrompt.value = false
     birdVelocity.value = FLAP_STRENGTH
     startPipeSpawning()
@@ -205,16 +329,23 @@ function gameLoop() {
   if (gameOver.value) return
 
   if (gameStarted.value) {
+    const elapsedSec = (Date.now() - gameStartTime.value) / 1000
+    const speed = Math.min(PIPE_SPEED_MAX, PIPE_SPEED_BASE + elapsedSec * PIPE_SPEED_RAMP_PER_SEC)
+
     birdVelocity.value += GRAVITY
     birdY.value += birdVelocity.value * 0.35
-    scrollOffset.value += PIPE_SPEED
+    scrollOffset.value += speed
 
     pipes.value = pipes.value
       .map((p) => {
-        const next = { ...p, x: p.x - PIPE_SPEED }
+        const next = { ...p, x: p.x - speed }
         if (!p.scored && next.x < viewportWidth.value * (BIRD_X_PERCENT / 100)) {
           next.scored = true
           score.value += 1
+          if (score.value > bestScore.value) {
+            bestScore.value = score.value
+            saveBestScore()
+          }
         }
         return next
       })
@@ -257,6 +388,7 @@ function restart() {
   birdY.value = 40
   birdVelocity.value = 0
   scrollOffset.value = 0
+  gameStartTime.value = 0
   pipes.value = []
   showStartPrompt.value = true
   gameStarted.value = false
@@ -267,7 +399,14 @@ function restart() {
   animationId = requestAnimationFrame(gameLoop)
 }
 
+// Mobile: ensure restart fires on touch (touchend) since click can be delayed or swallowed
+function onRestartTouch() {
+  restart()
+}
+
 onMounted(() => {
+  loadSelectedBird()
+  loadBestScore()
   measureViewport()
   resizeObserver = new ResizeObserver(measureViewport)
   const el = document.querySelector('.weave-page')
@@ -549,6 +688,82 @@ onUnmounted(() => {
   transform: translateY(-50%) rotate(-35deg) scaleX(1.2);
 }
 
+// Bird skin variants (game bird + preview)
+.bird-skin-red .bird-body,
+.bird-skin-red .bird-preview-body {
+  background: linear-gradient(135deg, #ffcdd2 0%, #ef5350 40%, #c62828 100%);
+  border-color: #b71c1c;
+}
+.bird-skin-red .bird-body::before,
+.bird-skin-red .bird-preview-body::before {
+  border-left-color: #e65100;
+}
+.bird-skin-red .bird-wing,
+.bird-skin-red .bird-preview-wing {
+  background: rgba(239, 83, 80, 0.95);
+  border-color: #b71c1c;
+}
+
+.bird-skin-blue .bird-body,
+.bird-skin-blue .bird-preview-body {
+  background: linear-gradient(135deg, #bbdefb 0%, #2196f3 40%, #1565c0 100%);
+  border-color: #0d47a1;
+}
+.bird-skin-blue .bird-body::before,
+.bird-skin-blue .bird-preview-body::before {
+  border-left-color: #0d47a1;
+}
+.bird-skin-blue .bird-wing,
+.bird-skin-blue .bird-preview-wing {
+  background: rgba(33, 150, 243, 0.95);
+  border-color: #0d47a1;
+}
+
+.bird-skin-green .bird-body,
+.bird-skin-green .bird-preview-body {
+  background: linear-gradient(135deg, #c8e6c9 0%, #66bb6a 40%, #2e7d32 100%);
+  border-color: #1b5e20;
+}
+.bird-skin-green .bird-body::before,
+.bird-skin-green .bird-preview-body::before {
+  border-left-color: #558b2f;
+}
+.bird-skin-green .bird-wing,
+.bird-skin-green .bird-preview-wing {
+  background: rgba(102, 187, 106, 0.95);
+  border-color: #1b5e20;
+}
+
+.bird-skin-purple .bird-body,
+.bird-skin-purple .bird-preview-body {
+  background: linear-gradient(135deg, #e1bee7 0%, #9c27b0 40%, #6a1b9a 100%);
+  border-color: #4a148c;
+}
+.bird-skin-purple .bird-body::before,
+.bird-skin-purple .bird-preview-body::before {
+  border-left-color: #7b1fa2;
+}
+.bird-skin-purple .bird-wing,
+.bird-skin-purple .bird-preview-wing {
+  background: rgba(156, 39, 176, 0.95);
+  border-color: #4a148c;
+}
+
+.bird-skin-teal .bird-body,
+.bird-skin-teal .bird-preview-body {
+  background: linear-gradient(135deg, #b2dfdb 0%, #009688 40%, #00695c 100%);
+  border-color: #004d40;
+}
+.bird-skin-teal .bird-body::before,
+.bird-skin-teal .bird-preview-body::before {
+  border-left-color: #00796b;
+}
+.bird-skin-teal .bird-wing,
+.bird-skin-teal .bird-preview-wing {
+  background: rgba(0, 150, 136, 0.95);
+  border-color: #004d40;
+}
+
 // Ground - two segments for seamless scroll
 .ground {
   position: absolute;
@@ -582,23 +797,142 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   background-color: #4e342e;
-  background-image:
-    linear-gradient(90deg, transparent 0%, transparent 96%, rgba(0, 0, 0, 0.25) 100%),
-    linear-gradient(0deg, transparent 0%, transparent 94%, rgba(0, 0, 0, 0.15) 100%);
-  background-size: 32px 24px;
   box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.2);
 }
 
-// Score
-.score-display {
+// Current score at top (center), below the app header (~64px)
+.score-display-top {
   position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
+  top: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 10;
-  font-size: 1.25rem;
-  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
   color: white;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.score-display-top-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.95;
+}
+
+.score-display-top-value {
+  font-size: clamp(1.75rem, 6vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+// Score + bird selector in brown dirt area at bottom - above bottom nav (~64px)
+.score-display-bottom {
+  position: fixed;
+  bottom: 6.5rem;
+  left: 0;
+  right: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+  color: #f5ecd8;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+.bird-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.score-number-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.score-number-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.9;
+}
+
+.score-display-bottom .score-number {
+  font-size: clamp(2.25rem, 11vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.bird-selector-spacer {
+  width: 132px;
+  flex-shrink: 0;
+}
+
+.bird-selector-btn {
+  color: #e8dcc4 !important;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 1.25rem;
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.bird-preview {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.bird-preview-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #f57c00;
+  background: linear-gradient(135deg, #ffeb3b 0%, #ffc107 40%, #ff9800 100%);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.4);
+}
+
+.bird-preview-body::before {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-left-color: #ff9800;
+  border-right: none;
+}
+
+.bird-preview-wing {
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 235, 59, 0.9);
+  border: 1px solid #f57c00;
 }
 
 // Game over
@@ -637,6 +971,9 @@ onUnmounted(() => {
   background: linear-gradient(90deg, #7cb342 0%, #8bc34a 100%);
   color: white;
   font-weight: 600;
+  min-height: 44px;
+  padding: 0.5rem 1.5rem;
+  touch-action: manipulation;
 }
 
 // Start prompt
@@ -663,10 +1000,18 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
-  .score-display {
-    font-size: 1rem;
-    top: 1rem;
-    right: 1rem;
+  .score-display-top {
+    top: 5rem;
+  }
+
+  .score-display-top-value {
+    font-size: 1.5rem;
+  }
+
+  .restart-btn {
+    min-height: 48px;
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
   }
 
   .game-over-box {
