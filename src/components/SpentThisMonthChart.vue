@@ -2,8 +2,14 @@
   <q-card class="spent-chart-card glass-card">
     <q-card-section>
       <div class="chart-header">
-        <span class="chart-label">{{ chartLabel }}</span>
-        <h2 class="chart-amount">{{ formatCurrency(totalSpent) }}</h2>
+        <div class="chart-header-left">
+          <span class="chart-label">{{ chartLabel }}</span>
+          <h2 class="chart-amount">{{ formatCurrency(totalSpent) }}</h2>
+        </div>
+        <div class="chart-header-right">
+          <span class="chart-label">TOTAL EXPENSES LEFT THIS MONTH</span>
+          <h2 class="chart-amount negative">{{ formatCurrency(totalExpensesLeft || 0) }}</h2>
+        </div>
       </div>
 
       <div class="chart-wrapper">
@@ -11,13 +17,13 @@
       </div>
 
       <div class="chart-legend">
-        <div class="legend-item">
+        <div class="legend-item" v-if="dailyIncome.length > 0">
           <div class="legend-dot purple"></div>
-          <span class="legend-text">This period</span>
+          <span class="legend-text">Income</span>
         </div>
-        <div class="legend-item">
-          <div class="legend-dot gray"></div>
-          <span class="legend-text">Average</span>
+        <div class="legend-item" v-if="dailyExpenses.length > 0">
+          <div class="legend-dot red"></div>
+          <span class="legend-text">Expenses</span>
         </div>
       </div>
 
@@ -112,7 +118,7 @@
 
         <div class="snapshot-list">
           <div class="snapshot-item">
-            <span class="snapshot-label">Monthly Balance</span>
+            <span class="snapshot-label">Cash Flow</span>
             <span class="snapshot-dots"></span>
             <span class="snapshot-value" :class="monthlyBalance >= 0 ? 'positive' : 'negative'">
               {{ formatCurrency(monthlyBalance) }}
@@ -166,6 +172,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useEventsStore } from '../stores/events'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -215,6 +222,18 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  totalExpensesLeft: {
+    type: Number,
+    default: 0,
+  },
+  dailyIncome: {
+    type: Array,
+    default: () => [],
+  },
+  dailyExpenses: {
+    type: Array,
+    default: () => [],
+  },
   availableScenarios: {
     type: Array,
     default: () => [],
@@ -242,6 +261,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggleScenario', 'deleteScenario', 'profileChange'])
+
+const eventsStore = useEventsStore()
+
+// Use store values as single source of truth (override props if store has values)
+const monthlyIncome = computed(() => eventsStore.monthlyIncome || props.monthlyIncome)
+const monthlyExpenses = computed(() => eventsStore.monthlyExpenses || props.monthlyExpenses)
+const monthlySavings = computed(() => eventsStore.monthlySavings || props.monthlySavings)
+const monthlyBalance = computed(() => eventsStore.cashFlow || props.monthlyBalance)
 
 const selectedProfileId = ref(props.currentProfile?.id || props.currentProfile?._id || null)
 
@@ -358,28 +385,112 @@ const dateLabels = computed(() => {
   return labels.slice(0, dataLength)
 })
 
-// Calculate cumulative spending
-const cumulativeSpending = computed(() => {
-  const data = props.spentData.length > 0 ? props.spentData : generateMockData()
+// Calculate daily income amounts (for positive area)
+const dailyIncomeAmounts = computed(() => {
+  return props.dailyIncome.length > 0 ? props.dailyIncome : []
+})
+
+// Calculate daily expense amounts (for negative area)
+const dailyExpenseAmounts = computed(() => {
+  return props.dailyExpenses.length > 0 ? props.dailyExpenses : []
+})
+
+// Calculate cumulative cash flow (income - expenses over time)
+const cumulativeCashFlow = computed(() => {
+  const incomeData = dailyIncomeAmounts.value
+  const expensesData = dailyExpenseAmounts.value
+  const days = Math.max(incomeData.length, expensesData.length)
+  
+  if (days === 0) return []
+  
+  let cumulative = []
+  let balance = 0
+  
+  for (let i = 0; i < days; i++) {
+    const income = incomeData[i] || 0
+    const expense = expensesData[i] || 0
+    balance += income - expense
+    cumulative.push(balance)
+  }
+  
+  // Always normalize to match monthlyBalance (from store or props) if available
+  if (cumulative.length === 0) return []
+  
+  const finalValue = cumulative[cumulative.length - 1] || 0
+  const targetBalance = monthlyBalance.value
+  
+  // Always normalize if we have a target balance and the values don't match
+  if (targetBalance !== 0 && finalValue !== 0 && Math.abs(finalValue - targetBalance) > 0.001) {
+    // Normalize to match monthly balance exactly
+    const ratio = targetBalance / finalValue
+    cumulative = cumulative.map((val) => {
+      const normalized = val * ratio
+      // Round to 2 decimal places for precision
+      return Math.round(normalized * 100) / 100
+    })
+    // Ensure the last value is exactly the target (fix any rounding errors)
+    if (cumulative.length > 0) {
+      cumulative[cumulative.length - 1] = targetBalance
+    }
+  }
+  
+  return cumulative
+})
+
+// Calculate cumulative income (for purple area above zero line)
+const cumulativeIncome = computed(() => {
+  const incomeData = dailyIncomeAmounts.value
+
+  if (incomeData.length === 0) return []
+
   let cumulative = []
   let sum = 0
 
-  data.forEach((amount) => {
-    sum += amount
+  // Use only the actual income data length
+  for (let i = 0; i < incomeData.length; i++) {
+    const income = incomeData[i] || 0
+    sum += income
     cumulative.push(sum)
-  })
+  }
+
+  // Ensure the final value matches monthlyIncome (from store or props)
+  const finalValue = cumulative[cumulative.length - 1] || 0
+  const targetIncome = monthlyIncome.value
+  if (targetIncome > 0 && Math.abs(finalValue - targetIncome) > 0.01) {
+    // Normalize to match monthly total
+    const ratio = targetIncome / finalValue
+    cumulative = cumulative.map((val) => val * ratio)
+  }
 
   return cumulative
 })
 
-// Calculate average line (linear progression)
-const averageLine = computed(() => {
-  const total =
-    props.totalSpent || cumulativeSpending.value[cumulativeSpending.value.length - 1] || 4466
-  const days = dateLabels.value.length
-  const dailyAverage = total / days
+// Calculate cumulative expenses (for red area overlapping with income)
+const cumulativeExpenses = computed(() => {
+  const expensesData = dailyExpenseAmounts.value
 
-  return dateLabels.value.map((day, index) => dailyAverage * (index + 1))
+  if (expensesData.length === 0) return []
+
+  let cumulative = []
+  let sum = 0
+
+  // Use only the actual expenses data length
+  for (let i = 0; i < expensesData.length; i++) {
+    const expense = expensesData[i] || 0
+    sum += expense
+    cumulative.push(sum) // Positive to overlap with income
+  }
+
+  // Ensure the final value matches monthlyExpenses (from store or props)
+  const finalValue = cumulative[cumulative.length - 1] || 0
+  const targetExpenses = monthlyExpenses.value
+  if (targetExpenses > 0 && Math.abs(finalValue - targetExpenses) > 0.01) {
+    // Normalize to match monthly total
+    const ratio = targetExpenses / finalValue
+    cumulative = cumulative.map((val) => val * ratio)
+  }
+
+  return cumulative
 })
 
 // Generate mock data if none provided
@@ -392,12 +503,127 @@ function generateMockData() {
   return baseAmounts
 }
 
-const chartData = computed(() => ({
-  labels: dateLabels.value,
-  datasets: [
-    {
+const chartData = computed(() => {
+  const hasIncomeData = props.dailyIncome.length > 0
+  const hasExpensesData = props.dailyExpenses.length > 0
+
+  const datasets = []
+
+  // If we have income/expense data, show overlapping cash flow visualization
+  if (hasIncomeData || hasExpensesData) {
+    // Get the maximum length to ensure all arrays are aligned
+    const maxLength = Math.max(
+      cumulativeIncome.value.length,
+      cumulativeExpenses.value.length,
+      cumulativeCashFlow.value.length,
+      dateLabels.value.length,
+    )
+
+    // Pad arrays to maxLength to ensure alignment
+    const padArray = (arr, length, fillValue) => {
+      if (arr.length >= length) return arr.slice(0, length)
+      return [...arr, ...new Array(length - arr.length).fill(fillValue)]
+    }
+
+    const incomeData = padArray(cumulativeIncome.value, maxLength, cumulativeIncome.value[cumulativeIncome.value.length - 1] || 0)
+    const expensesData = padArray(cumulativeExpenses.value, maxLength, cumulativeExpenses.value[cumulativeExpenses.value.length - 1] || 0)
+    const cashFlowData = padArray(cumulativeCashFlow.value, maxLength, cumulativeCashFlow.value[cumulativeCashFlow.value.length - 1] || 0)
+
+    // Income dataset (purple, cumulative from zero, trending up)
+    if (hasIncomeData) {
+      datasets.push({
+        label: 'Income',
+        data: incomeData,
+        borderColor: '#a855f7',
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx
+          const chart = context.chart
+          const gradient = ctx.createLinearGradient(
+            0,
+            chart.chartArea.top,
+            0,
+            chart.chartArea.bottom,
+          )
+          gradient.addColorStop(0, 'rgba(168, 85, 247, 0.6)')
+          gradient.addColorStop(0.5, 'rgba(147, 51, 234, 0.4)')
+          gradient.addColorStop(1, 'rgba(126, 34, 206, 0.2)')
+          return gradient
+        },
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#a855f7',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        order: 1, // Draw first (behind expenses)
+      })
+    }
+
+    // Expenses dataset (red, cumulative from zero, overlapping with income)
+    if (hasExpensesData) {
+      datasets.push({
+        label: 'Expenses',
+        data: expensesData,
+        borderColor: '#ef4444',
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx
+          const chart = context.chart
+          const gradient = ctx.createLinearGradient(
+            0,
+            chart.chartArea.top,
+            0,
+            chart.chartArea.bottom,
+          )
+          gradient.addColorStop(0, 'rgba(239, 68, 68, 0.6)')
+          gradient.addColorStop(0.5, 'rgba(220, 38, 38, 0.4)')
+          gradient.addColorStop(1, 'rgba(185, 28, 28, 0.2)')
+          return gradient
+        },
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#ef4444',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        order: 2, // Draw on top of income (creates overlap)
+      })
+    }
+    
+    // Cash flow line (white line showing net balance over time)
+    if (hasIncomeData || hasExpensesData) {
+      datasets.push({
+        label: 'Cash Flow',
+        data: cashFlowData,
+        borderColor: '#ffffff',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#ffffff',
+        pointHoverBorderColor: '#a855f7',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: false,
+        order: 3, // Draw on top of everything
+      })
+    }
+  } else {
+    // Fallback to old behavior if no income/expense data
+    const data = props.spentData.length > 0 ? props.spentData : generateMockData()
+    let cumulative = []
+    let sum = 0
+    data.forEach((amount) => {
+      sum += amount
+      cumulative.push(sum)
+    })
+
+    datasets.push({
       label: 'This period',
-      data: cumulativeSpending.value,
+      data: cumulative,
       borderColor: '#a855f7',
       backgroundColor: (context) => {
         const ctx = context.chart.ctx
@@ -415,20 +641,14 @@ const chartData = computed(() => ({
       pointHoverBorderWidth: 2,
       tension: 0.4,
       fill: true,
-    },
-    {
-      label: 'Average',
-      data: averageLine.value,
-      borderColor: 'rgba(156, 163, 175, 0.6)',
-      backgroundColor: 'transparent',
-      borderWidth: 2,
-      borderDash: [8, 4],
-      pointRadius: 0,
-      pointHoverRadius: 0,
-      tension: 0,
-    },
-  ],
-}))
+    })
+  }
+
+  return {
+    labels: dateLabels.value,
+    datasets,
+  }
+})
 
 const chartOptions = computed(() => ({
   responsive: true,
@@ -495,9 +715,22 @@ const chartOptions = computed(() => ({
       },
     },
     y: {
-      display: false,
+      display: true,
+      beginAtZero: true,
       grid: {
-        display: false,
+        display: true,
+        color: 'rgba(255, 255, 255, 0.1)',
+        drawBorder: false,
+        lineWidth: 1,
+      },
+      ticks: {
+        color: 'rgba(255, 255, 255, 0.5)',
+        font: {
+          size: 11,
+        },
+        callback: function (value) {
+          return '$' + value.toLocaleString()
+        },
       },
     },
   },
@@ -507,8 +740,8 @@ function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount)
 }
 </script>
@@ -527,7 +760,22 @@ function formatCurrency(amount) {
 }
 
 .chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.chart-header-left,
+.chart-header-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-header-right {
+  align-items: flex-end;
+  text-align: right;
 }
 
 .chart-label {
@@ -547,6 +795,10 @@ function formatCurrency(amount) {
   margin: 0;
   line-height: 1;
   letter-spacing: -1px;
+
+  &.negative {
+    color: var(--color-negative);
+  }
 }
 
 .chart-wrapper {
@@ -579,6 +831,10 @@ function formatCurrency(amount) {
 
   &.gray {
     background: rgba(156, 163, 175, 0.5);
+  }
+
+  &.red {
+    background: #ef4444;
   }
 }
 
@@ -892,6 +1148,16 @@ function formatCurrency(amount) {
     font-size: 0.65rem;
   }
 
+  .chart-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .chart-header-right {
+    align-items: flex-start;
+    text-align: left;
+  }
+
   .chart-amount {
     font-size: 2.25rem;
   }
@@ -955,6 +1221,10 @@ function formatCurrency(amount) {
     :deep(.q-card__section) {
       padding: 2rem 2.5rem 1.75rem;
     }
+  }
+
+  .chart-header {
+    gap: 2rem;
   }
 
   .chart-amount {

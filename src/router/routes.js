@@ -84,12 +84,6 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
-        path: 'slice',
-        name: 'Slice',
-        component: () => import('pages/PageSlice.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
         path: 'weave',
         name: 'Weave',
         component: () => import('pages/PageWeave.vue'),

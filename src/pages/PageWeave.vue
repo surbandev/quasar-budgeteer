@@ -232,7 +232,7 @@ let celebrationTimeout = null
 const completedMonths = ref(new Set())
 const isAdvancingMonth = ref(false)
 
-// Month bills from events (same logic as Slice: DEBIT, not SAVINGS, one month)
+// Month bills from events (DEBIT, not SAVINGS, one month)
 const filteredEvents = computed(() => eventsStore.filteredEvents || [])
 
 const monthBills = computed(() => {
@@ -999,7 +999,7 @@ onUnmounted(() => {
     0 0 6px rgba(0, 0, 0, 0.7);
 }
 
-// Shatter effect when a bill is passed (like Slice)
+// Shatter effect when a bill is passed
 .shatter-burst {
   position: fixed;
   width: 0;

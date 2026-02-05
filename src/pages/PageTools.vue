@@ -16,7 +16,7 @@
       <h2 class="tools-title">Tools</h2>
 
       <div class="tools-layout">
-        <!-- Tools row: Profile Settings, User Settings, Feedback, Slice -->
+        <!-- Tools row: Profile Settings, User Settings, Feedback, Weave -->
         <div class="tools-top-row">
           <div class="tool-bubble" @click="goToProfileSettings">
             <q-icon name="person" class="tool-icon" />
@@ -31,11 +31,6 @@
           <div class="tool-bubble" @click="goToFeedback">
             <q-icon name="chat_bubble" class="tool-icon" />
             <span class="tool-name">Feedback</span>
-          </div>
-
-          <div class="tool-bubble" @click="goToSlice">
-            <q-icon name="content_cut" class="tool-icon" />
-            <span class="tool-name">Slice</span>
           </div>
 
           <div class="tool-bubble" @click="goToWeave">
@@ -63,10 +58,6 @@ function goToProfileSettings() {
 
 function goToUserSettings() {
   router.push('/user-settings')
-}
-
-function goToSlice() {
-  router.push('/slice')
 }
 
 function goToWeave() {

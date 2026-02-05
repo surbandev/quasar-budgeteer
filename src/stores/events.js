@@ -58,6 +58,88 @@ export const useEventsStore = defineStore('events', () => {
     return totalDebit
   })
 
+  // Helper function to get event display amount (handles loans correctly)
+  function getEventDisplayAmount(event) {
+    if (!event) return 0
+    
+    const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
+    if (
+      loanCategories.includes(event.category) &&
+      event.monthly_payment &&
+      event.monthly_payment > 0
+    ) {
+      const payment = parseFloat(event.monthly_payment) || 0
+      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
+        const escrow = parseFloat(event.escrow) || 0
+        return payment + escrow
+      }
+      return payment
+    }
+    
+    const amount = event.amount
+    if (amount !== undefined && amount !== null) {
+      const parsed = parseFloat(amount)
+      return isNaN(parsed) || !isFinite(parsed) ? 0 : parsed
+    }
+    
+    return 0
+  }
+
+  // Monthly totals - single source of truth
+  // Uses filteredEvents (which respects date range and scenarios)
+  // Note: filteredEvents should be set by components after applying date range and scenario filters
+  const monthlyIncome = computed(() => {
+    // Use combinedActiveEvents if available (scenario-filtered), otherwise use filteredEvents
+    const eventsToUse = combinedActiveEvents.value.length > 0 
+      ? combinedActiveEvents.value 
+      : (filteredEvents.value || [])
+    
+    if (!Array.isArray(eventsToUse) || eventsToUse.length === 0) return 0
+
+    return eventsToUse
+      .filter((event) => event.type === 'CREDIT')
+      .reduce((total, event) => {
+        const amount = getEventDisplayAmount(event)
+        return total + (isNaN(amount) || !isFinite(amount) ? 0 : amount)
+      }, 0)
+  })
+
+  const monthlyExpenses = computed(() => {
+    // Use combinedActiveEvents if available (scenario-filtered), otherwise use filteredEvents
+    const eventsToUse = combinedActiveEvents.value.length > 0 
+      ? combinedActiveEvents.value 
+      : (filteredEvents.value || [])
+    
+    if (!Array.isArray(eventsToUse) || eventsToUse.length === 0) return 0
+
+    return eventsToUse
+      .filter((event) => event.type === 'DEBIT' && event.category !== 'SAVINGS')
+      .reduce((total, event) => {
+        const amount = getEventDisplayAmount(event)
+        return total + (isNaN(amount) || !isFinite(amount) ? 0 : amount)
+      }, 0)
+  })
+
+  const monthlySavings = computed(() => {
+    // Use combinedActiveEvents if available (scenario-filtered), otherwise use filteredEvents
+    const eventsToUse = combinedActiveEvents.value.length > 0 
+      ? combinedActiveEvents.value 
+      : (filteredEvents.value || [])
+    
+    if (!Array.isArray(eventsToUse) || eventsToUse.length === 0) return 0
+
+    return eventsToUse
+      .filter((event) => event.category === 'SAVINGS')
+      .reduce((total, event) => {
+        const amount = getEventDisplayAmount(event)
+        return total + (isNaN(amount) || !isFinite(amount) ? 0 : amount)
+      }, 0)
+  })
+
+  const cashFlow = computed(() => {
+    return monthlyIncome.value - monthlyExpenses.value
+  })
+
   // Actions
   function setProfile(prof) {
     if (prof && prof.id) {
@@ -693,6 +775,10 @@ export const useEventsStore = defineStore('events', () => {
     scenarios,
     cashFlowInTotal,
     cashFlowOutTotal,
+    monthlyIncome,
+    monthlyExpenses,
+    monthlySavings,
+    cashFlow,
     // Actions
     setProfile,
     setCurrentDate,

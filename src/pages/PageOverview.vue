@@ -9,10 +9,13 @@
         class="spent-chart-wrapper"
         :totalSpent="monthlyExpenses"
         :spentData="dailySpendingData"
+        :dailyIncome="dailyIncomeData"
+        :dailyExpenses="dailyExpensesData"
         :monthlyBalance="monthlyBalance"
         :monthlySavings="monthlySavings"
         :monthlyIncome="monthlyIncome"
         :monthlyExpenses="monthlyExpenses"
+        :totalExpensesLeft="totalExpensesLeftThisMonth"
         :availableScenarios="availableScenarios"
         :activeScenarios="activeScenarios"
         :profiles="allProfiles"
@@ -165,6 +168,8 @@ const endMonth = ref(null)
 const endDay = ref(null)
 const endYear = ref(null)
 const dailySpendingData = ref([])
+const dailyIncomeData = ref([])
+const dailyExpensesData = ref([])
 
 const monthOptions = computed(() => constantsStore.getMonths)
 const years = computed(() => constantsStore.getYears())
@@ -190,37 +195,89 @@ const availableEndDays = computed(() => {
   return Array.from({ length: lastDay }, (_, i) => i + 1)
 })
 
-const monthlyIncome = computed(() => {
+// Use store values as single source of truth
+const monthlyIncome = computed(() => eventsStore.monthlyIncome)
+const monthlyExpenses = computed(() => eventsStore.monthlyExpenses)
+const monthlySavings = computed(() => eventsStore.monthlySavings)
+const monthlyBalance = computed(() => eventsStore.cashFlow)
+
+// Calculate total expenses left this month (future expenses only, excluding income and savings)
+// This matches the logic in UpcomingTransactions component
+const totalExpensesLeftThisMonth = computed(() => {
   const eventsToUse =
     combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
   if (!eventsToUse || !Array.isArray(eventsToUse)) return 0
 
-  return eventsToUse
-    .filter((event) => event.type === 'CREDIT')
-    .reduce((total, event) => total + parseFloat(event.amount || 0), 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  today.setMinutes(0, 0, 0)
+  today.setSeconds(0, 0)
+  today.setMilliseconds(0)
+
+  // Always use current month (not date range filter) to match Budget tab behavior
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const start = new Date(year, month, 1)
+  const end = new Date(year, month + 1, 0)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+
+  let total = 0
+
+  // Helper function to get event display amount (matches UpcomingTransactions)
+  function getEventDisplayAmount(event) {
+    if (!event) return 0
+
+    const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
+    if (
+      loanCategories.includes(event.category) &&
+      event.monthly_payment &&
+      event.monthly_payment > 0
+    ) {
+      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
+        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
+      }
+      return parseFloat(event.monthly_payment)
+    }
+
+    const amount = event.amount
+    if (amount !== undefined && amount !== null) {
+      return parseFloat(amount) || 0
+    }
+
+    return 0
+  }
+
+  eventsToUse.forEach((event) => {
+    // Only process DEBIT (expenses), exclude CREDIT (income) and SAVINGS
+    if (event.type !== 'DEBIT' || event.category === 'SAVINGS') return
+
+    if (!event.date) return
+
+    // Parse date properly to avoid UTC timezone issues (same as PageEntries fix)
+    let eventDate
+    if (typeof event.date === 'string' && event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Parse YYYY-MM-DD as local date (not UTC)
+      const [year, month, day] = event.date.split('-').map(Number)
+      eventDate = new Date(year, month - 1, day)
+    } else {
+      eventDate = new Date(event.date)
+    }
+
+    eventDate.setHours(0, 0, 0, 0)
+    eventDate.setMinutes(0, 0, 0)
+    eventDate.setSeconds(0, 0)
+    eventDate.setMilliseconds(0)
+
+    // Only include future dates (strictly after today) within the current month range
+    if (eventDate > today && eventDate >= start && eventDate <= end) {
+      total += getEventDisplayAmount(event) || 0
+    }
+  })
+
+  return total
 })
-
-const monthlyExpenses = computed(() => {
-  const eventsToUse =
-    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
-  if (!eventsToUse || !Array.isArray(eventsToUse)) return 0
-
-  return eventsToUse
-    .filter((event) => event.type === 'DEBIT')
-    .reduce((total, event) => total + parseFloat(event.amount || 0), 0)
-})
-
-const monthlySavings = computed(() => {
-  const eventsToUse =
-    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
-  if (!eventsToUse || !Array.isArray(eventsToUse)) return 0
-
-  return eventsToUse
-    .filter((event) => event.category === 'SAVINGS')
-    .reduce((total, event) => total + parseFloat(event.amount || 0), 0)
-})
-
-const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
 
 // Computed properties for date range
 const startDate = computed(() => {
@@ -343,6 +400,8 @@ function calculateDailySpending() {
 
   if (!eventsToUse || !Array.isArray(eventsToUse)) {
     dailySpendingData.value = []
+    dailyIncomeData.value = []
+    dailyExpensesData.value = []
     return
   }
 
@@ -361,31 +420,83 @@ function calculateDailySpending() {
     end = new Date(year, month + 1, 0)
   }
 
+  // Ensure dates are set to midnight to avoid timezone issues
+  start.setHours(0, 0, 0, 0)
+  start.setMinutes(0, 0, 0)
+  start.setSeconds(0, 0)
+  start.setMilliseconds(0)
+  end.setHours(0, 0, 0, 0)
+  end.setMinutes(0, 0, 0)
+  end.setSeconds(0, 0)
+  end.setMilliseconds(0)
+
   // Calculate number of days in the range
   const timeDiff = end.getTime() - start.getTime()
   const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1
 
-  // Initialize daily spending array for the entire range
+  // Initialize daily arrays for the entire range
   const dailySpending = new Array(daysDiff).fill(0)
+  const dailyIncome = new Array(daysDiff).fill(0)
+  const dailyExpenses = new Array(daysDiff).fill(0)
 
-  // Aggregate spending by day across the entire date range
+  // Helper function to get event display amount
+  function getEventDisplayAmount(event) {
+    const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
+    if (
+      loanCategories.includes(event.category) &&
+      event.monthly_payment &&
+      event.monthly_payment > 0
+    ) {
+      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
+        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
+      }
+      return parseFloat(event.monthly_payment)
+    }
+    return parseFloat(event.amount || 0)
+  }
+
+  // Aggregate income and expenses by day across the entire date range
   eventsToUse.forEach((event) => {
-    if (event.type === 'DEBIT' && event.date) {
-      const eventDate = new Date(event.date)
-      eventDate.setHours(0, 0, 0, 0)
+    if (!event.date) return
 
-      // Check if event is within the date range
-      if (eventDate >= start && eventDate <= end) {
-        // Calculate which day index this event falls on
-        const dayIndex = Math.floor((eventDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-        if (dayIndex >= 0 && dayIndex < daysDiff) {
-          dailySpending[dayIndex] += parseFloat(event.amount || 0)
+    // Parse date properly to avoid UTC timezone issues (same fix as PageEntries)
+    let eventDate
+    if (typeof event.date === 'string' && event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Parse YYYY-MM-DD as local date (not UTC)
+      const [year, month, day] = event.date.split('-').map(Number)
+      eventDate = new Date(year, month - 1, day)
+    } else {
+      eventDate = new Date(event.date)
+    }
+
+    eventDate.setHours(0, 0, 0, 0)
+    eventDate.setMinutes(0, 0, 0)
+    eventDate.setSeconds(0, 0)
+    eventDate.setMilliseconds(0)
+
+    // Check if event is within the date range
+    if (eventDate >= start && eventDate <= end) {
+      // Calculate which day index this event falls on
+      const dayIndex = Math.floor((eventDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      if (dayIndex >= 0 && dayIndex < daysDiff) {
+        const amount = getEventDisplayAmount(event)
+
+        if (event.type === 'CREDIT') {
+          // Income
+          dailyIncome[dayIndex] += amount
+          dailySpending[dayIndex] += amount // Keep for backward compatibility
+        } else if (event.type === 'DEBIT' && event.category !== 'SAVINGS') {
+          // Expenses (excluding savings)
+          dailyExpenses[dayIndex] += amount
+          dailySpending[dayIndex] += amount // Keep for backward compatibility
         }
       }
     }
   })
 
   dailySpendingData.value = dailySpending
+  dailyIncomeData.value = dailyIncome
+  dailyExpensesData.value = dailyExpenses
 }
 
 async function getAllActiveScenarioEvents() {

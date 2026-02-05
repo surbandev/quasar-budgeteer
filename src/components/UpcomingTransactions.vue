@@ -38,7 +38,13 @@
               </div>
             </div>
           </div>
-          <div class="transaction-amount">
+          <div
+            class="transaction-amount"
+            :class="{
+              negative: transaction.type === 'DEBIT',
+              positive: transaction.type === 'CREDIT',
+            }"
+          >
             ${{ (getEventDisplayAmount(transaction) || 0).toFixed(2) }}
           </div>
         </div>
@@ -129,15 +135,43 @@ const upcomingTransactions = computed(() => {
 })
 
 const totalUpcomingExpenses = computed(() => {
-  if (!upcomingTransactions.value || upcomingTransactions.value.length === 0) {
+  if (!props.calendarDays || !Array.isArray(props.calendarDays)) {
     return 0
   }
 
-  return upcomingTransactions.value
-    .filter((transaction) => transaction.type === 'DEBIT')
-    .reduce((total, transaction) => {
-      return total + (getEventDisplayAmount(transaction) || 0)
-    }, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  today.setMinutes(0, 0, 0)
+  today.setSeconds(0, 0)
+  today.setMilliseconds(0)
+
+  let total = 0
+
+  props.calendarDays.forEach((day) => {
+    // Only process days in the current month
+    if (!day.currentMonth) return
+
+    if (!day.events || day.events.length === 0) return
+
+    // Create a proper date object from day.date
+    const dayDate = new Date(day.date)
+    dayDate.setHours(0, 0, 0, 0)
+    dayDate.setMinutes(0, 0, 0)
+    dayDate.setSeconds(0, 0)
+    dayDate.setMilliseconds(0)
+
+    // Only include future dates (strictly after today, not including today)
+    if (dayDate > today) {
+      day.events.forEach((event) => {
+        // Only include DEBIT (expenses), exclude CREDIT (income) and SAVINGS
+        if (event.type === 'DEBIT' && event.category !== 'SAVINGS') {
+          total += getEventDisplayAmount(event) || 0
+        }
+      })
+    }
+  })
+
+  return total
 })
 
 function getEventDisplayAmount(event) {
@@ -314,6 +348,14 @@ function goToEntries() {
   font-weight: 600;
   white-space: nowrap;
   margin-left: 1rem;
+
+  &.negative {
+    color: var(--color-negative);
+  }
+
+  &.positive {
+    color: var(--color-positive);
+  }
 }
 
 .no-upcoming-transactions {

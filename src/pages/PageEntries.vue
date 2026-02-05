@@ -158,7 +158,22 @@ const transactionsByDay = computed(() => {
   const grouped = {}
 
   filteredEvents.value.forEach((transaction) => {
-    const date = new Date(transaction.date)
+    if (!transaction.date) return
+    
+    // Parse date string properly to avoid UTC timezone issues
+    // If date is in YYYY-MM-DD format, parse it as local time
+    let date
+    if (typeof transaction.date === 'string' && transaction.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Parse YYYY-MM-DD as local date (not UTC)
+      const [year, month, day] = transaction.date.split('-').map(Number)
+      date = new Date(year, month - 1, day)
+    } else {
+      date = new Date(transaction.date)
+    }
+    
+    // Ensure date is set to local midnight to avoid timezone issues
+    date.setHours(0, 0, 0, 0)
+    
     const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
 
     if (!grouped[dateKey]) {
@@ -172,7 +187,8 @@ const transactionsByDay = computed(() => {
 
     grouped[dateKey].transactions.push(transaction)
     const amount = getEventDisplayAmount(transaction)
-    grouped[dateKey].total += transaction.type === 'DEBIT' ? -amount : amount
+    const numericAmount = isNaN(amount) || !isFinite(amount) ? 0 : amount
+    grouped[dateKey].total += transaction.type === 'DEBIT' ? -numericAmount : numericAmount
   })
 
   // Convert to array and sort by date (newest first)
@@ -204,26 +220,37 @@ function formatDayLabel(date) {
 }
 
 function formatCurrency(amount) {
+  const numericAmount = isNaN(amount) || !isFinite(amount) ? 0 : amount
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-  }).format(amount)
+  }).format(numericAmount)
 }
 
 function getEventDisplayAmount(event) {
+  if (!event) return 0
+  
   // Check for loan categories first - use monthly_payment instead of total loan amount
   const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
   if (loanCategories.includes(event.category)) {
     if (event.monthly_payment && event.monthly_payment > 0) {
+      const payment = parseFloat(event.monthly_payment) || 0
       if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
+        const escrow = parseFloat(event.escrow) || 0
+        return payment + escrow
       }
-      return parseFloat(event.monthly_payment)
+      return payment
     }
   }
 
   // For non-loan categories or loans without monthly_payment, use the regular amount
-  return event.amount || 0
+  const amount = event.amount
+  if (amount !== undefined && amount !== null) {
+    const parsed = parseFloat(amount)
+    return isNaN(parsed) || !isFinite(parsed) ? 0 : parsed
+  }
+  
+  return 0
 }
 
 function toTitleCase(str) {
