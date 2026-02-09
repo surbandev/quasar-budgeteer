@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import axios from 'axios'
 import { useScenariosStore } from 'src/stores/scenarios.js'
 
 vi.mock('axios')

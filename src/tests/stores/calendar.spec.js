@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import axios from 'axios'
 import { useCalendarStore } from 'src/stores/calendar.js'
 import { useEventsStore } from 'src/stores/events.js'
 

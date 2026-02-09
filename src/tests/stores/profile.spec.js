@@ -9,10 +9,18 @@ vi.mock('src/js/api.js', () => ({ getAPIURL: () => 'https://test.example' }))
 const storage = {}
 const localStorageMock = {
   getItem: (key) => storage[key] ?? null,
-  setItem: (key, value) => { storage[key] = String(value) },
-  removeItem: (key) => { delete storage[key] },
-  clear: () => { Object.keys(storage).forEach((k) => delete storage[k]) },
-  get length() { return Object.keys(storage).length },
+  setItem: (key, value) => {
+    storage[key] = String(value)
+  },
+  removeItem: (key) => {
+    delete storage[key]
+  },
+  clear: () => {
+    Object.keys(storage).forEach((k) => delete storage[k])
+  },
+  get length() {
+    return Object.keys(storage).length
+  },
   key: (i) => Object.keys(storage)[i] ?? null,
 }
 beforeAll(() => {

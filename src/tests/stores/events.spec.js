@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import axios from 'axios'
 import { useEventsStore } from 'src/stores/events.js'
 
 vi.mock('axios')
@@ -179,8 +178,8 @@ describe('events store', () => {
     const end = new Date(2025, 1, 28) // Feb 28
     store.filterEventsByDateRange(start, end, allEvents)
     expect(store.filteredEvents.length).toBe(2) // Feb 1 and Feb 15
-    expect(store.filteredEvents.every((e) => e.date >= '2025-02-01' && e.date <= '2025-02-28')).toBe(
-      true,
-    )
+    expect(
+      store.filteredEvents.every((e) => e.date >= '2025-02-01' && e.date <= '2025-02-28'),
+    ).toBe(true)
   })
 })
