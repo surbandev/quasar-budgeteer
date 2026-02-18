@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "quasar dev"
+    },
+    {
+      "name": "Run E2E Tests",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test:e2e"
+    },
+    {
+      "name": "Run Vitest",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test:run"
+    }
+  ]
+}
