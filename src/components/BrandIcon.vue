@@ -33,7 +33,6 @@ const constantsStore = useConstantsStore()
 // Import all brand icons dynamically (SVG, PNG, JPEG, and JPG)
 const brandIconsSvg = import.meta.glob('../assets/icons/brands/*.svg', { eager: true, as: 'url' })
 const brandIconsPng = import.meta.glob('../assets/*.png', { eager: true, as: 'url' })
-const brandIconsPngRoot = import.meta.glob('../*.png', { eager: true, as: 'url' })
 const brandIconsJpeg = import.meta.glob('../assets/*.{jpeg,jpg,JPG}', { eager: true, as: 'url' })
 
 const iconPath = computed(() => {
@@ -130,23 +129,9 @@ const iconPath = computed(() => {
           }
         }
 
-        // Try src root directory
-        const rootKeys = [`../${iconFile}`, `./${iconFile}`, `/src/${iconFile}`]
-
-        for (const key of rootKeys) {
-          if (brandIconsPngRoot[key]) {
-            return brandIconsPngRoot[key]
-          }
-        }
-
         // Fallback: search by filename
         const iconFileName = iconFile.toLowerCase().replace('.png', '')
         for (const [key, value] of Object.entries(brandIconsPng)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
-          }
-        }
-        for (const [key, value] of Object.entries(brandIconsPngRoot)) {
           if (key.toLowerCase().includes(iconFileName)) {
             return value
           }

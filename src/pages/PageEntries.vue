@@ -48,6 +48,19 @@
         </div>
       </div>
 
+      <!-- Upcoming toggle (only shown on current month) -->
+      <div v-if="isCurrentMonth" class="toggle-row">
+        <q-btn
+          flat
+          no-caps
+          class="toggle-btn"
+          :class="{ active: !showUpcomingOnly }"
+          @click="showUpcomingOnly = !showUpcomingOnly"
+        >
+          {{ showUpcomingOnly ? 'Show all transactions' : 'Show upcoming only' }}
+        </q-btn>
+      </div>
+
       <!-- Transactions by Day -->
       <div class="transactions-by-day">
         <div v-for="(dayGroup, index) in transactionsByDay" :key="index" class="day-group">
@@ -114,6 +127,7 @@ const constantsStore = useConstantsStore()
 const loading = ref(false)
 const selectedMonth = ref(new Date().getMonth()) // 0-11
 const selectedYear = ref(new Date().getFullYear())
+const showUpcomingOnly = ref(true)
 
 const filteredEvents = computed(() => eventsStore.filteredEvents || [])
 
@@ -149,17 +163,25 @@ const monthlyExpenses = computed(() => {
 
 const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
 
+const isCurrentMonth = computed(() => {
+  const now = new Date()
+  return selectedMonth.value === now.getMonth() && selectedYear.value === now.getFullYear()
+})
+
 const transactionsByDay = computed(() => {
   if (!filteredEvents.value || !Array.isArray(filteredEvents.value)) {
     return []
   }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
   // Group transactions by day
   const grouped = {}
 
   filteredEvents.value.forEach((transaction) => {
     if (!transaction.date) return
-    
+
     // Parse date string properly to avoid UTC timezone issues
     // If date is in YYYY-MM-DD format, parse it as local time
     let date
@@ -170,9 +192,12 @@ const transactionsByDay = computed(() => {
     } else {
       date = new Date(transaction.date)
     }
-    
+
     // Ensure date is set to local midnight to avoid timezone issues
     date.setHours(0, 0, 0, 0)
+
+    // When viewing the current month with upcoming filter on, skip past transactions
+    if (isCurrentMonth.value && showUpcomingOnly.value && date <= today) return
     
     const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
 
@@ -285,6 +310,8 @@ async function previousMonth() {
     selectedMonth.value -= 1
   }
 
+  showUpcomingOnly.value = isCurrentMonth.value
+
   // Update store and fetch data for new month
   const newDate = new Date(selectedYear.value, selectedMonth.value, 1)
   eventsStore.setCurrentDate(newDate)
@@ -298,6 +325,8 @@ async function nextMonth() {
   } else {
     selectedMonth.value += 1
   }
+
+  showUpcomingOnly.value = isCurrentMonth.value
 
   // Update store and fetch data for new month
   const newDate = new Date(selectedYear.value, selectedMonth.value, 1)
@@ -415,6 +444,34 @@ onMounted(async () => {
   color: var(--text-tertiary);
   letter-spacing: 0.5px;
   text-transform: uppercase;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.toggle-btn {
+  padding: 0.5rem 1.25rem;
+  background: var(--bg-button);
+  border: 2px solid var(--border-secondary);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--bg-button-hover);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+  }
+
+  &.active {
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+  }
 }
 
 .transactions-by-day {
