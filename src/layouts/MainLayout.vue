@@ -67,12 +67,15 @@ import { useQuasar } from 'quasar'
 import { useRouter, useRoute } from 'vue-router'
 import { useProfileStore } from '../stores/profile'
 import { useCalendarStore } from '../stores/calendar'
+import { useAuthStore } from '../stores/auth'
 
 const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
 const profileStore = useProfileStore()
 const calendarStore = useCalendarStore()
+const authStore = useAuthStore()
+
 const currentTab = ref('overview')
 const bottomTab = ref('overview')
 
@@ -141,10 +144,9 @@ async function onBottomTabChange(tabName) {
       .onOk(async () => {
         // User confirmed logout
         try {
-          localStorage.removeItem('token')
-          localStorage.removeItem('userID')
-          await profileStore.resetCurrentProfile()
-          await calendarStore.resetForNewUser()
+          await authStore.logout()
+          profileStore.resetCurrentProfile()
+          calendarStore.resetForNewUser()
           router.push('/login')
         } catch (error) {
           console.error('Error during logout:', error)

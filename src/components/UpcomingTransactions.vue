@@ -59,7 +59,7 @@
         class="see-all-btn"
         @click="goToEntries"
       >
-        See all upcoming transactions
+        See all transactions
       </q-btn>
     </q-card-section>
   </q-card>

@@ -61,7 +61,7 @@ export default boot(({ app }) => {
         localStorage.removeItem('userID')
 
         // Redirect to login page
-        window.location.href = '/login'
+        window.location.replace('/login')
       }
 
       return Promise.reject(error)
@@ -126,7 +126,7 @@ export default boot(({ app }) => {
         localStorage.removeItem('userID')
 
         // Redirect to login page
-        window.location.href = '/login'
+        window.location.replace('/login')
       }
 
       return Promise.reject(error)
