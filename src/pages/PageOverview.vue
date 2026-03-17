@@ -146,6 +146,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useProfileStore } from '../stores/profile'
+import { useCalendarStore } from '../stores/calendar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
@@ -154,6 +155,7 @@ import SpentThisMonthChart from '../components/SpentThisMonthChart.vue'
 const router = useRouter()
 const $q = useQuasar()
 const profileStore = useProfileStore()
+const calendarStore = useCalendarStore()
 const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
 const constantsStore = useConstantsStore()
@@ -614,6 +616,7 @@ async function initializeOverview() {
 async function loadProfileData() {
   try {
     if (currentProfile.value) {
+      calendarStore.setProfile(currentProfile.value)
       scenariosStore.setProfile(currentProfile.value)
       eventsStore.setProfile(currentProfile.value)
 

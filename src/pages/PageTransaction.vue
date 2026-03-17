@@ -441,7 +441,9 @@ async function saveEvent() {
           ? parseFloat(newEvent.value.monthlyAmount)
           : null,
         name: newEvent.value.name,
-        principal: newEvent.value.principal ? parseFloat(newEvent.value.principal) : null,
+        principal: newEvent.value.principal != null && newEvent.value.principal !== ''
+          ? parseFloat(newEvent.value.principal)
+          : 0,
         profileID: newEvent.value.profileID,
         scenarioID: newEvent.value.scenarioID,
         startDate: formattedStartDate,

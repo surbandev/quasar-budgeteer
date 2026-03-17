@@ -116,6 +116,12 @@ export const useCalendarStore = defineStore('calendar', () => {
   })
 
   // Actions
+  function setProfile(prof) {
+    if (prof && (prof.id || prof._id)) {
+      profile.value = prof
+    }
+  }
+
   async function fetchProfileInfo(profileID) {
     try {
       const url = `${getAPIURL()}/api/profile/get-profile-by-id`
@@ -451,6 +457,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     calendarDaysDebitTotal,
     calendarDaysCreditTotal,
     // Actions
+    setProfile,
     fetchProfileInfo,
     updateCalendarDays,
     previousMonth,

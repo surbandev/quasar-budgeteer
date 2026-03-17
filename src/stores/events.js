@@ -396,7 +396,10 @@ export const useEventsStore = defineStore('events', () => {
         monthlyAmount: 'monthlyAmount' in eventData ? eventData.monthlyAmount : '',
         monthlyPayment: 'monthlyPayment' in eventData ? eventData.monthlyPayment : null,
         name: eventData.name,
-        principal: 'principal' in eventData ? eventData.principal : null,
+        principal:
+          eventData.principal != null && eventData.principal !== ''
+            ? Number(eventData.principal)
+            : 0,
         profileID: eventData.profileID || profile.value.id,
         scenarioID: eventData.scenarioID,
         startDate: eventData.startDate,

@@ -504,6 +504,10 @@ const currentView = computed(() => {
 const netFlow = computed(() => calendarStore.netFlow)
 const currentMonthYear = computed(() => calendarStore.currentMonthYear)
 const profile = computed(() => calendarStore.profile)
+// Use events store profile when creating events so we post to the profile whose calendar is displayed (e.g. after switching profile on Overview)
+const effectiveProfileId = computed(
+  () => eventsStore.profile?.id ?? profile.value?.id,
+)
 const calendarDays = computed(() => calendarStore.calendarDays)
 const calendarDaysDebitTotal = computed(() => calendarStore.calendarDaysDebitTotal)
 const calendarDaysCreditTotal = computed(() => calendarStore.calendarDaysCreditTotal)
@@ -592,7 +596,7 @@ function goToAddTransaction(event) {
     return
   }
 
-  if (!profile.value?.id) {
+  if (!effectiveProfileId.value) {
     console.error('Profile ID not available')
     $q.notify({
       type: 'negative',
@@ -614,7 +618,7 @@ function goToAddTransaction(event) {
 
   const query = {
     eventID: eventID,
-    profileID: profile.value.id,
+    profileID: effectiveProfileId.value,
     scenarioID: selectedScenario.value.id,
   }
 
@@ -643,7 +647,7 @@ async function handleNextMonth() {
 function goToCreateScenarioPage() {
   router.push({
     path: '/create-scenario',
-    query: { profileID: profile.value?.id },
+    query: { profileID: effectiveProfileId.value },
   })
 }
 
@@ -811,15 +815,16 @@ async function saveTransaction() {
       endDate: formattedEndDate,
       calculatedEndDate: formattedEndDate, // Always set calculatedEndDate (defaults to endDate)
       scenarioID: newTransaction.value.scenarioID || selectedScenario.value.id,
-      profileID: profile.value.id,
+      profileID: effectiveProfileId.value,
       active: true,
     }
 
     // Add loan-specific fields if applicable (matching original app format)
     if (isLoanCategory.value) {
-      eventData.principal = newTransaction.value.principal
-        ? parseFloat(newTransaction.value.principal)
-        : null
+      eventData.principal =
+        newTransaction.value.principal != null && newTransaction.value.principal !== ''
+          ? parseFloat(newTransaction.value.principal)
+          : 0
       eventData.interest = newTransaction.value.interest
         ? parseFloat(newTransaction.value.interest)
         : null
@@ -982,8 +987,8 @@ watch(
 
 // Initialize transaction form with current profile and scenario when switching to transaction view
 watch(currentView, (newView) => {
-  if (newView === 'transaction' && profile.value && selectedScenario.value) {
-    newTransaction.value.profileID = profile.value.id
+  if (newView === 'transaction' && effectiveProfileId.value && selectedScenario.value) {
+    newTransaction.value.profileID = effectiveProfileId.value
     newTransaction.value.scenarioID = selectedScenario.value.id
 
     // Set the start date from query parameter if provided
