@@ -1298,6 +1298,7 @@ watch(currentProfile, async (newProfile) => {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   font-size: 0.75rem;
+  cursor: pointer;
 
   &.positive {
     border-left: 3px solid #4caf50;
