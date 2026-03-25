@@ -1,45 +1,6 @@
 <template>
   <q-layout view="hHh lpR fFf" class="main-layout">
-    <!-- Mobile/Tablet Header with Purple Gradient -->
-    <q-header elevated class="app-header mobile-header" v-if="$q.screen.lt.lg">
-      <div class="header-content">
-        <!-- Tab Navigation -->
-        <q-tabs
-          v-model="currentTab"
-          class="app-tabs"
-          active-color="white"
-          indicator-color="white"
-          align="center"
-          @update:model-value="onTabChange"
-        >
-          <q-tab v-for="tab in tabs" :key="tab.name" :name="tab.name" :label="tab.label" no-caps />
-        </q-tabs>
-      </div>
-    </q-header>
-
-    <!-- Desktop Header with Tabs -->
-    <q-header elevated class="app-header desktop-header" v-if="$q.screen.gt.md">
-      <div class="header-content">
-        <!-- Tab Navigation -->
-        <q-tabs
-          v-model="currentTab"
-          class="app-tabs desktop-tabs"
-          active-color="white"
-          indicator-color="white"
-          align="center"
-          @update:model-value="onTabChange"
-        >
-          <q-tab v-for="tab in tabs" :key="tab.name" :name="tab.name" :label="tab.label" no-caps />
-        </q-tabs>
-      </div>
-    </q-header>
-
-    <q-page-container
-      :class="{
-        'with-mobile-header': $q.screen.lt.lg,
-        'with-desktop-header': $q.screen.gt.md,
-      }"
-    >
+    <q-page-container>
       <router-view />
     </q-page-container>
 
@@ -62,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter, useRoute } from 'vue-router'
 import { useProfileStore } from '../stores/profile'
@@ -76,48 +37,7 @@ const profileStore = useProfileStore()
 const calendarStore = useCalendarStore()
 const authStore = useAuthStore()
 
-const currentTab = ref('overview')
 const bottomTab = ref('overview')
-
-// Determine which tabs to show based on current route
-const isCalendarRoute = computed(() => {
-  // Show calendar tabs if on budget page or transaction page with eventID (editing from budget)
-  return route.path.startsWith('/budget') || (route.path === '/transaction' && route.query.eventID)
-})
-
-const tabs = computed(() => {
-  if (isCalendarRoute.value) {
-    return [
-      { name: 'calendar', label: 'CALENDAR' },
-      { name: 'scenarios', label: 'SCENARIOS' },
-      { name: 'transaction', label: 'TRANSACTION' },
-    ]
-  }
-  return [
-    { name: 'overview', label: 'OVERVIEW' },
-    { name: 'spending', label: 'SPENDING' },
-    { name: 'list', label: 'LIST' },
-  ]
-})
-
-function onTabChange(tabName) {
-  // Overview tabs
-  if (tabName === 'overview') {
-    router.push('/overview')
-  } else if (tabName === 'spending') {
-    router.push('/spending')
-  } else if (tabName === 'list') {
-    router.push('/entries')
-  }
-  // Budget tabs (calendar, scenarios, transaction)
-  else if (tabName === 'calendar') {
-    router.push('/budget?view=calendar')
-  } else if (tabName === 'scenarios') {
-    router.push('/budget?view=scenarios')
-  } else if (tabName === 'transaction') {
-    router.push('/budget?view=transaction')
-  }
-}
 
 async function onBottomTabChange(tabName) {
   if (tabName === 'overview') {
@@ -125,8 +45,8 @@ async function onBottomTabChange(tabName) {
       router.push('/overview')
     }
   } else if (tabName === 'budget') {
-    if (route.path !== '/budget' || route.query.view !== 'calendar') {
-      router.push('/budget?view=calendar')
+    if (route.path !== '/spending') {
+      router.push('/spending')
     }
   } else if (tabName === 'tools') {
     // Always navigate to /tools, even if already there
@@ -171,38 +91,26 @@ async function onBottomTabChange(tabName) {
 
 // Watch route changes to update currentTab and bottomTab
 watch(
-  () => [route.path, route.query.view, route.query.eventID],
-  ([newPath, viewQuery, eventID]) => {
+  () => [route.path, route.query.eventID],
+  ([newPath, eventID]) => {
     // Overview routes
     if (newPath === '/overview') {
-      currentTab.value = 'overview'
       bottomTab.value = 'overview'
     } else if (newPath === '/spending') {
-      currentTab.value = 'spending'
-      bottomTab.value = 'overview'
+      bottomTab.value = 'budget'
     } else if (newPath === '/entries') {
-      currentTab.value = 'list'
       bottomTab.value = 'overview'
     }
     // Budget routes
     else if (newPath.startsWith('/budget')) {
-      if (viewQuery === 'scenarios') {
-        currentTab.value = 'scenarios'
-      } else if (viewQuery === 'transaction') {
-        currentTab.value = 'transaction'
-      } else {
-        currentTab.value = 'calendar'
-      }
       bottomTab.value = 'budget'
     }
     // Transaction route - if it has eventID, it's from budget, show budget tabs
     else if (newPath === '/transaction' && eventID) {
-      currentTab.value = 'transaction'
       bottomTab.value = 'budget'
     }
     // Transaction route without eventID - new transaction, show dashboard tabs
     else if (newPath === '/transaction' && !eventID) {
-      currentTab.value = 'overview'
       bottomTab.value = 'overview'
     }
     // Tools route
@@ -211,11 +119,9 @@ watch(
     }
     // Other routes (feedback, settings, etc.) - reset to overview so tools tab can be clicked again
     else {
-      // Reset bottomTab for other routes so tools tab can be clicked again when returning
-      // Only reset if currently on tools to avoid unnecessary changes
-      if (bottomTab.value === 'tools') {
-        bottomTab.value = 'overview'
-      }
+      // Clear tab selection on secondary pages so tapping any bottom tab always navigates.
+      // This fixes cases where users are on /feedback with "overview" already selected.
+      bottomTab.value = null
     }
   },
   { immediate: true },

@@ -163,6 +163,9 @@
             class="profile-select"
             @update:model-value="onProfileChange"
           />
+          <div class="snapshot-right-controls">
+            <slot name="rightControls" />
+          </div>
         </div>
       </div>
     </q-card-section>
@@ -925,7 +928,18 @@ function formatCurrency(amount) {
   padding-top: 0.75rem;
   border-top: none;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.snapshot-right-controls {
+  flex: 1;
+  min-width: 320px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .profile-select {
@@ -1209,6 +1223,13 @@ function formatCurrency(amount) {
   .snapshot-footer {
     margin-top: 0.85rem;
     padding-top: 0.65rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .snapshot-right-controls {
+    min-width: 0;
+    width: 100%;
   }
 
   .snapshot-sync {
@@ -1250,6 +1271,7 @@ function formatCurrency(amount) {
   // Make profile selector wider on desktop
   .snapshot-footer {
     justify-content: flex-start;
+    align-items: center;
   }
 
   .profile-select {

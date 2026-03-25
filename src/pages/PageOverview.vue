@@ -25,12 +25,9 @@
         @toggleScenario="toggleScenario"
         @deleteScenario="deleteScenario"
         @profileChange="handleProfileChange"
-      />
-
-      <!-- Date Range Filter -->
-      <q-card class="glass-card q-mb-lg">
-        <q-card-section>
-          <div class="date-range-filters">
+      >
+        <template #rightControls>
+          <div class="date-range-filters in-chart">
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-6">
                 <div class="text-subtitle2 q-mb-sm">Start Date</div>
@@ -83,7 +80,6 @@
                   </div>
                 </div>
               </div>
-
               <div class="col-12 col-md-6">
                 <div class="text-subtitle2 q-mb-sm">End Date</div>
                 <div class="row q-col-gutter-sm">
@@ -135,8 +131,78 @@
               </div>
             </div>
           </div>
+        </template>
+      </SpentThisMonthChart>
+
+      <q-card class="glass-card q-mb-lg">
+        <q-card-section>
+          <div class="view-header">
+            <div class="view-header-top">
+              <h2 class="view-title">Calendar</h2>
+              <button class="add-transaction-link" @click="goToAddTransactionPage">
+                <span class="add-icon">+</span>
+                <span>Add Transaction</span>
+              </button>
+            </div>
+            <div class="calendar-header-controls">
+              <q-btn flat dense round icon="chevron_left" @click="handlePreviousMonth" color="white" />
+              <h3 class="month-title">{{ currentMonthYear }}</h3>
+              <q-btn flat dense round icon="chevron_right" @click="handleNextMonth" color="white" />
+            </div>
+          </div>
+
+          <div class="cash-flow-summary-inline q-mb-lg">
+            <div class="cash-flow-item">
+              <span class="flow-label">Cash Flow IN</span>
+              <span class="flow-amount positive">${{ calendarDaysCreditTotal.toFixed(2) }}</span>
+            </div>
+            <div class="cash-flow-item">
+              <span class="flow-label">Cash Flow OUT</span>
+              <span class="flow-amount negative">${{ calendarDaysDebitTotal.toFixed(2) }}</span>
+            </div>
+            <div class="cash-flow-item">
+              <span class="flow-label">Net Flow</span>
+              <span class="flow-amount" :class="calendarNetFlow >= 0 ? 'positive' : 'negative'">
+                ${{ calendarNetFlow.toFixed(2) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="calendar-grid-wrapper">
+            <div class="calendar-grid">
+              <div v-for="day in daysOfWeek" :key="day" class="calendar-day-header">
+                {{ day }}
+              </div>
+              <div
+                v-for="date in overviewCalendarDays"
+                :key="`${date.date.getTime()}-${date.currentMonth ? 'current' : 'other'}`"
+                class="calendar-day-cell"
+                :class="{
+                  'current-month': date.currentMonth,
+                  'has-events': date.hasEvents,
+                  today: date.isToday,
+                }"
+              >
+                <div class="day-number">{{ date.day }}</div>
+                <div v-if="date.events && date.events.length > 0" class="event-details">
+                  <div
+                    v-for="(event, index) in date.events"
+                    :key="index"
+                    class="event-item"
+                    :class="event.type === 'CREDIT' ? 'positive' : 'negative'"
+                    @click.stop="goToEditTransaction(event)"
+                  >
+                    <div class="event-name">{{ event.name }}</div>
+                    <div class="event-amount">${{ getEventDisplayAmount(event) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </q-card-section>
       </q-card>
+
+      <UpcomingTransactions :calendar-days="overviewCalendarDays" />
     </div>
   </q-page>
 </template>
@@ -151,6 +217,7 @@ import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
 import SpentThisMonthChart from '../components/SpentThisMonthChart.vue'
+import UpcomingTransactions from '../components/UpcomingTransactions.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -172,16 +239,146 @@ const endYear = ref(null)
 const dailySpendingData = ref([])
 const dailyIncomeData = ref([])
 const dailyExpensesData = ref([])
+const currentCalendarDate = ref(new Date())
 
 const monthOptions = computed(() => constantsStore.getMonths)
 const years = computed(() => constantsStore.getYears())
+const daysOfWeek = computed(() => constantsStore.getDaysOfWeek)
 
 const currentProfile = computed(() => profileStore.currentProfile)
+const selectedScenario = computed(() => scenariosStore.selectedScenario)
 const allProfiles = computed(() => profileStore.profiles || [])
 const customScenarios = computed(() => scenariosStore.customScenarios)
 const filteredEvents = computed(() => eventsStore.filteredEvents)
 
 const availableScenarios = computed(() => customScenarios.value)
+const effectiveProfileId = computed(() => eventsStore.profile?.id ?? currentProfile.value?.id)
+const currentMonthYear = computed(() =>
+  currentCalendarDate.value.toLocaleString('default', { month: 'long', year: 'numeric' }),
+)
+
+function getEventDisplayAmount(event) {
+  if (!event) return 0
+  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
+  if (
+    loanCategories.includes(event.category) &&
+    event.monthly_payment &&
+    event.monthly_payment > 0
+  ) {
+    if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
+      return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
+    }
+    return parseFloat(event.monthly_payment)
+  }
+  return parseFloat(event.amount || 0)
+}
+
+const overviewCalendarDays = computed(() => {
+  const eventsToUse =
+    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
+  const year = currentCalendarDate.value.getFullYear()
+  const month = currentCalendarDate.value.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const days = []
+
+  function buildEventsForDay(dayDate) {
+    const dayDateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`
+    return (eventsToUse || [])
+      .filter((event) => event?.date === dayDateStr)
+      .map((event) => ({
+        id: event.id || event._id,
+        name: event.name,
+        amount: getEventDisplayAmount(event),
+        type: event.type,
+        category: event.category,
+        monthly_payment: event.monthly_payment,
+        escrow: event.escrow,
+      }))
+  }
+
+  const firstDayOfWeek = firstDay.getDay()
+  const prevMonthLastDay = new Date(year, month, 0).getDate()
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    const dayNum = prevMonthLastDay - i
+    const dayDate = new Date(year, month - 1, dayNum)
+    const events = buildEventsForDay(dayDate)
+    days.push({
+      day: dayNum,
+      currentMonth: false,
+      date: dayDate,
+      hasEvents: events.length > 0,
+      events,
+      isToday: false,
+    })
+  }
+
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    const dayDate = new Date(year, month, i)
+    dayDate.setHours(0, 0, 0, 0)
+    const events = buildEventsForDay(dayDate)
+    days.push({
+      day: i,
+      currentMonth: true,
+      date: dayDate,
+      hasEvents: events.length > 0,
+      events,
+      isToday:
+        dayDate.getDate() === today.getDate() &&
+        dayDate.getMonth() === today.getMonth() &&
+        dayDate.getFullYear() === today.getFullYear(),
+    })
+  }
+
+  const lastDayOfWeek = lastDay.getDay()
+  const daysToAdd = 6 - lastDayOfWeek
+  for (let i = 1; i <= daysToAdd; i++) {
+    const dayDate = new Date(year, month + 1, i)
+    const events = buildEventsForDay(dayDate)
+    days.push({
+      day: i,
+      currentMonth: false,
+      date: dayDate,
+      hasEvents: events.length > 0,
+      events,
+      isToday: false,
+    })
+  }
+
+  return days
+})
+
+const calendarDaysDebitTotal = computed(() =>
+  overviewCalendarDays.value.reduce((total, day) => {
+    if (!day.currentMonth || !day.events?.length) return total
+    return (
+      total +
+      day.events.reduce(
+        (dayTotal, event) =>
+          event.type === 'DEBIT' ? dayTotal + getEventDisplayAmount(event) : dayTotal,
+        0,
+      )
+    )
+  }, 0),
+)
+
+const calendarDaysCreditTotal = computed(() =>
+  overviewCalendarDays.value.reduce((total, day) => {
+    if (!day.currentMonth || !day.events?.length) return total
+    return (
+      total +
+      day.events.reduce(
+        (dayTotal, event) =>
+          event.type === 'CREDIT' ? dayTotal + getEventDisplayAmount(event) : dayTotal,
+        0,
+      )
+    )
+  }, 0),
+)
+
+const calendarNetFlow = computed(() => calendarDaysCreditTotal.value - calendarDaysDebitTotal.value)
 
 const availableDays = computed(() => {
   const month = startMonth.value !== null ? startMonth.value - 1 : new Date().getMonth()
@@ -226,30 +423,6 @@ const totalExpensesLeftThisMonth = computed(() => {
   end.setHours(0, 0, 0, 0)
 
   let total = 0
-
-  // Helper function to get event display amount (matches UpcomingTransactions)
-  function getEventDisplayAmount(event) {
-    if (!event) return 0
-
-    const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
-    if (
-      loanCategories.includes(event.category) &&
-      event.monthly_payment &&
-      event.monthly_payment > 0
-    ) {
-      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
-      }
-      return parseFloat(event.monthly_payment)
-    }
-
-    const amount = event.amount
-    if (amount !== undefined && amount !== null) {
-      return parseFloat(amount) || 0
-    }
-
-    return 0
-  }
 
   eventsToUse.forEach((event) => {
     // Only process DEBIT (expenses), exclude CREDIT (income) and SAVINGS
@@ -354,6 +527,22 @@ function hasDateRangeFilter() {
   )
 }
 
+function handlePreviousMonth() {
+  currentCalendarDate.value = new Date(
+    currentCalendarDate.value.getFullYear(),
+    currentCalendarDate.value.getMonth() - 1,
+    1,
+  )
+}
+
+function handleNextMonth() {
+  currentCalendarDate.value = new Date(
+    currentCalendarDate.value.getFullYear(),
+    currentCalendarDate.value.getMonth() + 1,
+    1,
+  )
+}
+
 async function updateFilteredData() {
   if (!hasDateRangeFilter()) {
     initializeDateRangeToCurrentMonth()
@@ -440,22 +629,6 @@ function calculateDailySpending() {
   const dailySpending = new Array(daysDiff).fill(0)
   const dailyIncome = new Array(daysDiff).fill(0)
   const dailyExpenses = new Array(daysDiff).fill(0)
-
-  // Helper function to get event display amount
-  function getEventDisplayAmount(event) {
-    const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
-    if (
-      loanCategories.includes(event.category) &&
-      event.monthly_payment &&
-      event.monthly_payment > 0
-    ) {
-      if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-        return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
-      }
-      return parseFloat(event.monthly_payment)
-    }
-    return parseFloat(event.amount || 0)
-  }
 
   // Aggregate income and expenses by day across the entire date range
   eventsToUse.forEach((event) => {
@@ -568,6 +741,7 @@ async function deleteScenario(scenario) {
 async function handleProfileChange(profile) {
   try {
     profileStore.setCurrentProfile(profile)
+    localStorage.setItem('profileID', profile.id || profile._id)
     await loadProfileData()
   } catch (error) {
     console.error('Error changing profile:', error)
@@ -577,6 +751,38 @@ async function handleProfileChange(profile) {
       position: 'top',
     })
   }
+}
+
+function goToEditTransaction(event) {
+  const eventID = event?.id || event?._id
+  if (!eventID || !effectiveProfileId.value || !selectedScenario.value?.id) {
+    $q.notify({
+      type: 'negative',
+      message: 'Unable to open transaction details right now.',
+      position: 'top',
+    })
+    return
+  }
+
+  router.push({
+    path: '/transaction',
+    query: {
+      eventID,
+      profileID: effectiveProfileId.value,
+      scenarioID: selectedScenario.value.id,
+    },
+  })
+}
+
+function goToAddTransactionPage() {
+  router.push({
+    path: '/budget',
+    query: {
+      view: 'transaction',
+      profileID: effectiveProfileId.value,
+      scenarioID: selectedScenario.value?.id,
+    },
+  })
 }
 
 async function initializeOverview() {
@@ -592,17 +798,26 @@ async function initializeOverview() {
       router.push('/login')
       return
     }
+    const storedProfileID = localStorage.getItem('profileID')
 
     loading.value = true
 
     await profileStore.fetchProfiles()
 
-    const userProfile = profileStore.profiles.find((p) => p.id == userID || p._id == userID)
-    if (userProfile) {
-      await profileStore.setCurrentProfile(userProfile)
-    } else {
-      await profileStore.setCurrentProfile({ id: userID })
+    const matchedStoredProfile = profileStore.profiles.find(
+      (p) => p.id == storedProfileID || p._id == storedProfileID,
+    )
+    const matchedUserProfile = profileStore.profiles.find((p) => p.id == userID || p._id == userID)
+    const fallbackProfile = profileStore.profiles[0] || null
+    const resolvedProfile = matchedStoredProfile || matchedUserProfile || fallbackProfile
+
+    if (!resolvedProfile) {
+      router.push('/login')
+      return
     }
+
+    await profileStore.setCurrentProfile(resolvedProfile)
+    localStorage.setItem('profileID', resolvedProfile.id || resolvedProfile._id)
 
     await loadProfileData()
   } catch (error) {
@@ -784,6 +999,85 @@ watch(currentProfile, async (newProfile) => {
   }
 }
 
+.date-range-filters.in-chart {
+  padding: 0.2rem 0.1rem;
+  max-width: 860px;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+
+  .text-subtitle2 {
+    font-size: 0.8rem;
+    margin-bottom: 0.45rem;
+    color: rgba(255, 255, 255, 0.88);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+
+  .row {
+    margin-left: -6px;
+    margin-right: -6px;
+  }
+
+  .row > div {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+.date-range-filters.in-chart .col-md-6 {
+  min-width: 390px;
+}
+
+.date-range-filters.in-chart :deep(.q-select) {
+  .q-field__control {
+    min-height: 30px;
+    padding: 0.1rem 0.15rem;
+    border-radius: 0;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .q-field__native,
+  .q-field__input {
+    font-size: 0.98rem;
+    line-height: 1.35;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .q-field__label {
+    font-size: 0.74rem;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .q-icon {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.58);
+  }
+
+  &.q-field--focused .q-field__control {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .q-field__control:before,
+  .q-field__control:after {
+    display: none !important;
+  }
+}
+
+.date-range-filters.in-chart :deep(.q-field__native span),
+.date-range-filters.in-chart :deep(.q-field__input span),
+.date-range-filters.in-chart :deep(.q-field__native),
+.date-range-filters.in-chart :deep(.q-field__input) {
+  overflow: visible;
+  text-overflow: unset;
+}
+
 .date-range-filters :deep(.q-select) {
   .q-field__control {
     background: rgba(255, 255, 255, 0.1);
@@ -840,6 +1134,191 @@ watch(currentProfile, async (newProfile) => {
   &.q-field--focused .q-icon {
     color: #667eea;
   }
+}
+
+.view-header {
+  margin-bottom: 1.5rem;
+}
+
+.view-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.view-title {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 1rem 0;
+}
+
+.add-transaction-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  color: #a855f7;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.35rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.add-transaction-link:hover {
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.add-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.calendar-header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.month-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  min-width: 200px;
+  text-align: center;
+}
+
+.cash-flow-summary-inline {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--color-primary-light);
+  border-radius: 12px;
+  border: 1px solid var(--color-primary-border);
+}
+
+.cash-flow-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.flow-label {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.flow-amount {
+  font-size: 1.3rem;
+  font-weight: 700;
+
+  &.positive {
+    color: var(--color-positive);
+  }
+
+  &.negative {
+    color: var(--color-negative);
+  }
+}
+
+.calendar-grid-wrapper {
+  overflow-x: auto;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  min-width: 700px;
+}
+
+.calendar-day-header {
+  text-align: center;
+  padding: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.calendar-day-cell {
+  min-height: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 0.5rem;
+  position: relative;
+
+  &.has-events {
+    background: rgba(33, 150, 243, 0.15);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+  }
+
+  &.today {
+    background: rgba(76, 175, 80, 0.2);
+    border: 2px solid #4caf50;
+  }
+
+  &:not(.current-month) {
+    opacity: 0.4;
+  }
+}
+
+.day-number {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.5rem;
+}
+
+.event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.event-item {
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 0.75rem;
+
+  &.positive {
+    border-left: 3px solid #4caf50;
+  }
+
+  &.negative {
+    border-left: 3px solid #f44336;
+  }
+}
+
+.event-name {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-amount {
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* Date filter dropdown menu styling - Global override for all menus in date filters */
@@ -932,6 +1411,24 @@ watch(currentProfile, async (newProfile) => {
       .q-field__input {
         font-size: 0.9rem;
       }
+    }
+  }
+
+  .date-range-filters.in-chart {
+    max-width: 100%;
+    margin-left: 0;
+    padding: 0.15rem 0;
+  }
+
+  .date-range-filters.in-chart :deep(.q-select) {
+    .q-field__control {
+      min-height: 30px;
+      padding: 0.05rem 0.1rem;
+    }
+
+    .q-field__native,
+    .q-field__input {
+      font-size: 0.94rem;
     }
   }
 }
@@ -1134,6 +1631,34 @@ watch(currentProfile, async (newProfile) => {
 @media (max-width: 768px) {
   .overview-page {
     padding: 1rem;
+  }
+
+  .view-title {
+    font-size: 1.5rem;
+  }
+
+  .view-header-top {
+    align-items: flex-start;
+  }
+
+  .add-transaction-link {
+    font-size: 0.85rem;
+    padding: 0.15rem 0.25rem;
+  }
+
+  .cash-flow-summary-inline {
+    flex-direction: column;
+  }
+
+  .calendar-day-cell {
+    min-height: 80px;
+  }
+
+  .calendar-header-controls {
+    .month-title {
+      font-size: 1.2rem;
+      min-width: 150px;
+    }
   }
 
   .stats-grid {

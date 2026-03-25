@@ -7,86 +7,14 @@
       <div v-if="currentView === 'calendar'" class="calendar-view">
         <q-card class="glass-card">
           <q-card-section>
-            <div class="view-header">
-              <h2 class="view-title">Calendar</h2>
-              <div class="calendar-header-controls">
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="chevron_left"
-                  @click="handlePreviousMonth"
-                  color="white"
-                />
-                <h3 class="month-title">{{ currentMonthYear }}</h3>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="chevron_right"
-                  @click="handleNextMonth"
-                  color="white"
-                />
-              </div>
+            <div class="text-h6 q-mb-sm">Calendar moved to Overview</div>
+            <div class="text-body2 q-mb-md">
+              The calendar and upcoming transactions are now shown on the Overview page below the
+              date range picker.
             </div>
-
-            <div class="cash-flow-summary-inline q-mb-lg">
-              <div class="cash-flow-item">
-                <span class="flow-label">Cash Flow IN</span>
-                <span class="flow-amount positive">${{ calendarDaysCreditTotal.toFixed(2) }}</span>
-              </div>
-              <div class="cash-flow-item">
-                <span class="flow-label">Cash Flow OUT</span>
-                <span class="flow-amount negative">${{ calendarDaysDebitTotal.toFixed(2) }}</span>
-              </div>
-              <div class="cash-flow-item">
-                <span class="flow-label">Net Flow</span>
-                <span class="flow-amount" :class="netFlow >= 0 ? 'positive' : 'negative'">
-                  ${{ netFlow.toFixed(2) }}
-                </span>
-              </div>
-            </div>
-
-            <div class="calendar-grid-wrapper">
-              <div class="calendar-grid">
-                <div v-for="day in daysOfWeek" :key="day" class="calendar-day-header">
-                  {{ day }}
-                </div>
-
-                <div
-                  v-for="date in calendarDays"
-                  :key="`${date.date.getTime()}-${date.currentMonth ? 'current' : 'other'}`"
-                  class="calendar-day-cell"
-                  :class="{
-                    'current-month': date.currentMonth,
-                    'has-events': date.hasEvents,
-                    today: date.isToday,
-                    transitioning: isTransitioning,
-                    clickable: date.currentMonth && (!date.events || date.events.length === 0),
-                  }"
-                  @click="handleDayClick(date)"
-                >
-                  <div class="day-number">{{ date.day }}</div>
-                  <div v-if="date.events && date.events.length > 0" class="event-details">
-                    <div
-                      v-for="(event, index) in date.events"
-                      :key="index"
-                      class="event-item"
-                      :class="event.type === 'CREDIT' ? 'positive' : 'negative'"
-                      @click.stop="goToAddTransaction(event)"
-                    >
-                      <div class="event-name">{{ event.name }}</div>
-                      <div class="event-amount">${{ getEventDisplayAmount(event) }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <q-btn color="primary" no-caps label="Go to Overview" @click="router.push('/overview')" />
           </q-card-section>
         </q-card>
-
-        <!-- Upcoming Transactions Component -->
-        <UpcomingTransactions :calendar-days="calendarDays" />
       </div>
 
       <!-- Scenarios View -->
@@ -456,7 +384,6 @@ import { useCalendarStore } from '../stores/calendar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
-import UpcomingTransactions from '../components/UpcomingTransactions.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -466,8 +393,6 @@ const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
 const constantsStore = useConstantsStore()
 
-const daysOfWeek = computed(() => constantsStore.getDaysOfWeek)
-const isTransitioning = ref(false)
 const isInitializing = ref(false)
 const isSavingTransaction = ref(false)
 const loanCalculationPreview = ref(null)
@@ -501,16 +426,11 @@ const currentView = computed(() => {
   return route.query.view || 'calendar'
 })
 
-const netFlow = computed(() => calendarStore.netFlow)
-const currentMonthYear = computed(() => calendarStore.currentMonthYear)
 const profile = computed(() => calendarStore.profile)
 // Use events store profile when creating events so we post to the profile whose calendar is displayed (e.g. after switching profile on Overview)
 const effectiveProfileId = computed(
   () => eventsStore.profile?.id ?? profile.value?.id,
 )
-const calendarDays = computed(() => calendarStore.calendarDays)
-const calendarDaysDebitTotal = computed(() => calendarStore.calendarDaysDebitTotal)
-const calendarDaysCreditTotal = computed(() => calendarStore.calendarDaysCreditTotal)
 
 const allScenarios = computed(() => scenariosStore.allScenarios)
 const selectedScenario = computed(() => scenariosStore.selectedScenario)
@@ -533,116 +453,6 @@ const isLoanCategory = computed(() => {
 const isMortgageCategory = computed(() => {
   return newTransaction.value.category === 'MORTGAGE'
 })
-
-function getEventDisplayAmount(event) {
-  if (!event) return 0
-
-  // Check for loan categories first - use monthly_payment instead of total loan amount
-  const loanCategories = ['MORTGAGE', 'GENERIC_LOAN', 'AUTO_LOAN']
-  if (
-    loanCategories.includes(event.category) &&
-    event.monthly_payment &&
-    event.monthly_payment > 0
-  ) {
-    if (event.category === 'MORTGAGE' && event.escrow && event.escrow > 0) {
-      return parseFloat(event.monthly_payment) + parseFloat(event.escrow)
-    }
-    return parseFloat(event.monthly_payment)
-  }
-
-  // For non-loan categories, use the regular amount
-  const amount = event.amount
-  if (amount !== undefined && amount !== null) {
-    return parseFloat(amount) || 0
-  }
-
-  return 0
-}
-
-function handleDayClick(date) {
-  // Only handle clicks on days in the current month that have no events
-  if (!date.currentMonth) return
-  if (date.events && date.events.length > 0) return
-
-  // Navigate to transaction view with the selected date
-  const selectedDate = date.date.toISOString().split('T')[0]
-  router.push({
-    path: '/budget',
-    query: {
-      view: 'transaction',
-      date: selectedDate,
-      profileID: profile.value?.id,
-      scenarioID: selectedScenario.value?.id,
-    },
-  })
-}
-
-function goToAddTransaction(event) {
-  if (!event) {
-    console.error('No event provided to goToAddTransaction')
-    return
-  }
-
-  // Try to get the event ID from various possible fields
-  const eventID = event.id || event._id || event.event?.id || event.event?._id
-
-  if (!eventID) {
-    console.error('Event ID not found in event object:', event)
-    $q.notify({
-      type: 'negative',
-      message: 'Unable to load event details. Event ID not found.',
-      position: 'top',
-    })
-    return
-  }
-
-  if (!effectiveProfileId.value) {
-    console.error('Profile ID not available')
-    $q.notify({
-      type: 'negative',
-      message: 'Profile not set. Please refresh the page.',
-      position: 'top',
-    })
-    return
-  }
-
-  if (!selectedScenario.value?.id) {
-    console.error('Scenario ID not available')
-    $q.notify({
-      type: 'negative',
-      message: 'Scenario not selected. Please select a scenario.',
-      position: 'top',
-    })
-    return
-  }
-
-  const query = {
-    eventID: eventID,
-    profileID: effectiveProfileId.value,
-    scenarioID: selectedScenario.value.id,
-  }
-
-  router.push({
-    path: '/transaction',
-    query: query,
-  })
-}
-
-async function handlePreviousMonth() {
-  isTransitioning.value = true
-  await calendarStore.previousMonth()
-  setTimeout(() => {
-    isTransitioning.value = false
-  }, 300)
-}
-
-async function handleNextMonth() {
-  isTransitioning.value = true
-  await calendarStore.nextMonth()
-  setTimeout(() => {
-    isTransitioning.value = false
-  }, 300)
-}
 
 function goToCreateScenarioPage() {
   router.push({
