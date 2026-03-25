@@ -54,14 +54,16 @@ export default boot(({ app }) => {
     (error) => {
       console.error('Response error intercepted:', error.message)
 
-      // Handle 401 Unauthorized - token expired or invalid
+      // Handle 401 from authenticated requests only.
+      // This prevents failed login attempts from triggering a hard redirect.
       if (error.response && error.response.status === 401) {
-        // Clear auth data
-        localStorage.removeItem('token')
-        localStorage.removeItem('userID')
+        const hadToken = Boolean(localStorage.getItem('token'))
 
-        // Redirect to login page
-        window.location.replace('/login')
+        if (hadToken) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('userID')
+          window.location.replace('/login')
+        }
       }
 
       return Promise.reject(error)
@@ -119,14 +121,16 @@ export default boot(({ app }) => {
     (error) => {
       console.error('Response error intercepted:', error.message)
 
-      // Handle 401 Unauthorized - token expired or invalid
+      // Handle 401 from authenticated requests only.
+      // This prevents failed login attempts from triggering a hard redirect.
       if (error.response && error.response.status === 401) {
-        // Clear auth data
-        localStorage.removeItem('token')
-        localStorage.removeItem('userID')
+        const hadToken = Boolean(localStorage.getItem('token'))
 
-        // Redirect to login page
-        window.location.replace('/login')
+        if (hadToken) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('userID')
+          window.location.replace('/login')
+        }
       }
 
       return Promise.reject(error)
