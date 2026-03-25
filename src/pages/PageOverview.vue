@@ -15,16 +15,19 @@
         :monthlySavings="monthlySavings"
         :monthlyIncome="monthlyIncome"
         :monthlyExpenses="monthlyExpenses"
-        :totalExpensesLeft="totalExpensesLeftThisMonth"
+        :totalExpensesLeft="totalExpensesLeftForChart"
         :availableScenarios="availableScenarios"
         :activeScenarios="activeScenarios"
         :profiles="allProfiles"
         :currentProfile="currentProfile"
         :startDate="startDate"
         :endDate="endDate"
+        :isOneYearView="isOneYearView"
+        :quickRangePreset="quickRangePreset"
         @toggleScenario="toggleScenario"
         @deleteScenario="deleteScenario"
         @profileChange="handleProfileChange"
+        @selectQuickRange="handleQuickRangeSelection"
       >
         <template #rightControls>
           <div class="date-range-filters in-chart">
@@ -45,7 +48,7 @@
                       outlined
                       dense
                       dark
-                      @update:model-value="updateFilteredData"
+                      @update:model-value="onDateFilterChange"
                     >
                       <template v-slot:selected>
                         <span v-if="startMonth">
@@ -64,7 +67,7 @@
                       outlined
                       dense
                       dark
-                      @update:model-value="updateFilteredData"
+                      @update:model-value="onDateFilterChange"
                     />
                   </div>
                   <div class="col-4">
@@ -75,7 +78,7 @@
                       outlined
                       dense
                       dark
-                      @update:model-value="updateFilteredData"
+                      @update:model-value="onDateFilterChange"
                     />
                   </div>
                 </div>
@@ -96,7 +99,7 @@
                       outlined
                       dense
                       dark
-                      @update:model-value="updateFilteredData"
+                      @update:model-value="onDateFilterChange"
                     >
                       <template v-slot:selected>
                         <span v-if="endMonth">
@@ -113,7 +116,7 @@
                       outlined
                       dense
                       dark
-                      @update:model-value="updateFilteredData"
+                      @update:model-value="onDateFilterChange"
                     />
                   </div>
                   <div class="col-4">
@@ -124,7 +127,7 @@
                       outlined
                       dense
                       dark
-                      @update:model-value="updateFilteredData"
+                      @update:model-value="onDateFilterChange"
                     />
                   </div>
                 </div>
@@ -240,6 +243,8 @@ const dailySpendingData = ref([])
 const dailyIncomeData = ref([])
 const dailyExpensesData = ref([])
 const currentCalendarDate = ref(new Date())
+const isOneYearView = ref(false)
+const quickRangePreset = ref('month')
 
 const monthOptions = computed(() => constantsStore.getMonths)
 const years = computed(() => constantsStore.getYears())
@@ -454,6 +459,66 @@ const totalExpensesLeftThisMonth = computed(() => {
   return total
 })
 
+// Multi-month chart range (matches SpentThisMonthChart isMoreThanMonth: > 31 days)
+const isChartTermRange = computed(() => {
+  if (!hasDateRangeFilter() || !startDate.value || !endDate.value) return false
+  const start = new Date(startDate.value.getTime())
+  const end = new Date(endDate.value.getTime())
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  return daysDiff > 31
+})
+
+// Future debits in the selected date range (for 6m / 1y / custom term)
+const totalExpensesLeftThisTerm = computed(() => {
+  if (!hasDateRangeFilter() || !startDate.value || !endDate.value) return 0
+  const eventsToUse =
+    combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
+  if (!eventsToUse || !Array.isArray(eventsToUse)) return 0
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  today.setMinutes(0, 0, 0)
+  today.setSeconds(0, 0)
+  today.setMilliseconds(0)
+
+  const rangeStart = new Date(startDate.value.getTime())
+  const rangeEnd = new Date(endDate.value.getTime())
+  rangeStart.setHours(0, 0, 0, 0)
+  rangeEnd.setHours(0, 0, 0, 0)
+
+  let total = 0
+
+  eventsToUse.forEach((event) => {
+    if (event.type !== 'DEBIT' || event.category === 'SAVINGS') return
+    if (!event.date) return
+
+    let eventDate
+    if (typeof event.date === 'string' && event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [y, m, d] = event.date.split('-').map(Number)
+      eventDate = new Date(y, m - 1, d)
+    } else {
+      eventDate = new Date(event.date)
+    }
+
+    eventDate.setHours(0, 0, 0, 0)
+    eventDate.setMinutes(0, 0, 0)
+    eventDate.setSeconds(0, 0)
+    eventDate.setMilliseconds(0)
+
+    if (eventDate > today && eventDate >= rangeStart && eventDate <= rangeEnd) {
+      total += getEventDisplayAmount(event) || 0
+    }
+  })
+
+  return total
+})
+
+const totalExpensesLeftForChart = computed(() =>
+  isChartTermRange.value ? totalExpensesLeftThisTerm.value : totalExpensesLeftThisMonth.value,
+)
+
 // Computed properties for date range
 const startDate = computed(() => {
   if (!hasDateRangeFilter()) return null
@@ -514,6 +579,53 @@ function initializeDateRangeToCurrentMonth() {
   endMonth.value = month + 1
   endDay.value = lastDay.getDate()
   endYear.value = year
+  isOneYearView.value = false
+  quickRangePreset.value = 'month'
+}
+
+async function applyQuickRange(months) {
+  if (months === 1) {
+    initializeDateRangeToCurrentMonth()
+    await updateFilteredData()
+    return
+  }
+
+  const monthStart = new Date()
+  monthStart.setHours(0, 0, 0, 0)
+  monthStart.setDate(1)
+
+  const rangeEndDate = new Date(monthStart)
+  rangeEndDate.setMonth(rangeEndDate.getMonth() + months)
+  rangeEndDate.setDate(rangeEndDate.getDate() - 1)
+
+  startMonth.value = monthStart.getMonth() + 1
+  startDay.value = 1
+  startYear.value = monthStart.getFullYear()
+  endMonth.value = rangeEndDate.getMonth() + 1
+  endDay.value = rangeEndDate.getDate()
+  endYear.value = rangeEndDate.getFullYear()
+
+  isOneYearView.value = months === 12
+  quickRangePreset.value = months === 12 ? '1y' : '6m'
+  await updateFilteredData()
+}
+
+async function handleQuickRangeSelection(rangeKey) {
+  if (rangeKey === '6m') {
+    await applyQuickRange(6)
+    return
+  }
+  if (rangeKey === '1y') {
+    await applyQuickRange(12)
+    return
+  }
+  await applyQuickRange(1)
+}
+
+async function onDateFilterChange() {
+  isOneYearView.value = false
+  quickRangePreset.value = 'custom'
+  await updateFilteredData()
 }
 
 function hasDateRangeFilter() {
@@ -1026,6 +1138,7 @@ watch(currentProfile, async (newProfile) => {
     padding-right: 6px;
   }
 }
+
 
 .date-range-filters.in-chart .col-md-6 {
   min-width: 390px;

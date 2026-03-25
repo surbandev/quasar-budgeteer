@@ -6,8 +6,40 @@
           <span class="chart-label">{{ chartLabel }}</span>
           <h2 class="chart-amount">{{ formatCurrency(totalSpent) }}</h2>
         </div>
+        <div class="chart-header-center">
+          <span class="chart-label">AT A GLANCE</span>
+          <div class="glance-actions">
+            <q-btn
+              dense
+              unelevated
+              no-caps
+              :label="currentMonthName"
+              color="primary"
+              :outline="quickRangePreset !== 'month'"
+              @click="emit('selectQuickRange', 'month')"
+            />
+            <q-btn
+              dense
+              unelevated
+              no-caps
+              label="6 months"
+              color="primary"
+              :outline="quickRangePreset !== '6m'"
+              @click="emit('selectQuickRange', '6m')"
+            />
+            <q-btn
+              dense
+              unelevated
+              no-caps
+              label="1 year"
+              color="primary"
+              :outline="quickRangePreset !== '1y'"
+              @click="emit('selectQuickRange', '1y')"
+            />
+          </div>
+        </div>
         <div class="chart-header-right">
-          <span class="chart-label">TOTAL EXPENSES LEFT THIS MONTH</span>
+          <span class="chart-label">{{ expensesLeftLabel }}</span>
           <h2 class="chart-amount negative">{{ formatCurrency(totalExpensesLeft || 0) }}</h2>
         </div>
       </div>
@@ -173,7 +205,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEventsStore } from '../stores/events'
 import { Line } from 'vue-chartjs'
@@ -261,9 +293,17 @@ const props = defineProps({
     type: Date,
     default: null,
   },
+  isOneYearView: {
+    type: Boolean,
+    default: false,
+  },
+  quickRangePreset: {
+    type: String,
+    default: 'month',
+  },
 })
 
-const emit = defineEmits(['toggleScenario', 'deleteScenario', 'profileChange'])
+const emit = defineEmits(['toggleScenario', 'deleteScenario', 'profileChange', 'selectQuickRange'])
 
 const eventsStore = useEventsStore()
 
@@ -329,7 +369,116 @@ const isMoreThanMonth = computed(() => {
 
 // Chart label based on date range
 const chartLabel = computed(() => {
-  return isMoreThanMonth.value ? 'SPENT THIS TERM' : 'SPENT THIS MONTH'
+  return isMoreThanMonth.value ? 'SPENT IN THIS TERM' : 'SPENT THIS MONTH'
+})
+
+const expensesLeftLabel = computed(() => {
+  return isMoreThanMonth.value
+    ? 'TOTAL EXPENSES THIS TERM'
+    : 'TOTAL EXPENSES LEFT THIS MONTH'
+})
+
+const currentMonthName = computed(() =>
+  new Date().toLocaleString('default', { month: 'long' }),
+)
+
+const shouldUseProgressiveAnimation = computed(() => {
+  return props.quickRangePreset === '6m' || props.quickRangePreset === '1y'
+})
+
+const animatedPointCount = ref(0)
+const progressiveFrameId = ref(null)
+const lastRevealSignature = ref('')
+let revealDebounceTimer = null
+
+function clearProgressiveTimer() {
+  if (progressiveFrameId.value !== null) {
+    cancelAnimationFrame(progressiveFrameId.value)
+    progressiveFrameId.value = null
+  }
+}
+
+function getExpectedDayCountFromRange() {
+  if (!props.startDate || !props.endDate) return null
+  const start = new Date(props.startDate.getTime())
+  const end = new Date(props.endDate.getTime())
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  const ms = end.getTime() - start.getTime()
+  if (ms < 0) return null
+  return Math.floor(ms / (1000 * 60 * 60 * 24)) + 1
+}
+
+function startProgressiveReveal() {
+  clearProgressiveTimer()
+
+  const totalPoints = dateLabels.value.length || 0
+  const expectedDays = getExpectedDayCountFromRange()
+  if (
+    shouldUseProgressiveAnimation.value &&
+    expectedDays != null &&
+    totalPoints > 0 &&
+    totalPoints < expectedDays
+  ) {
+    return
+  }
+
+  const signature = `${props.quickRangePreset}:${totalPoints}:${dateLabels.value[0] || ''}:${dateLabels.value[totalPoints - 1] || ''}`
+  if (lastRevealSignature.value === signature) return
+  lastRevealSignature.value = signature
+
+  if (totalPoints <= 0) {
+    animatedPointCount.value = 0
+    return
+  }
+
+  if (!shouldUseProgressiveAnimation.value) {
+    animatedPointCount.value = totalPoints
+    return
+  }
+
+  animatedPointCount.value = 1
+
+  // requestAnimationFrame + time-based progress: updates every frame, no multi-point jumps
+  const totalDurationMs = Math.min(9000, Math.max(2800, totalPoints * 22))
+  const startTime = performance.now()
+
+  function revealFrame(now) {
+    const elapsed = now - startTime
+    const t = Math.min(1, elapsed / totalDurationMs)
+    // Linear in time → steady left-to-right draw; rAF updates every frame (no interval batching)
+    const nextCount = Math.max(1, Math.min(totalPoints, Math.ceil(t * totalPoints)))
+    animatedPointCount.value = nextCount
+
+    if (nextCount < totalPoints) {
+      progressiveFrameId.value = requestAnimationFrame(revealFrame)
+    } else {
+      progressiveFrameId.value = null
+    }
+  }
+
+  progressiveFrameId.value = requestAnimationFrame(revealFrame)
+}
+
+function scheduleProgressiveReveal() {
+  if (revealDebounceTimer) {
+    clearTimeout(revealDebounceTimer)
+    revealDebounceTimer = null
+  }
+  revealDebounceTimer = setTimeout(() => {
+    revealDebounceTimer = null
+    nextTick(() => {
+      startProgressiveReveal()
+    })
+  }, 120)
+}
+
+onBeforeUnmount(() => {
+  clearProgressiveTimer()
+  if (revealDebounceTimer) {
+    clearTimeout(revealDebounceTimer)
+    revealDebounceTimer = null
+  }
 })
 
 // Generate date labels for x-axis
@@ -387,6 +536,14 @@ const dateLabels = computed(() => {
 
   return labels.slice(0, dataLength)
 })
+
+watch(
+  [dateLabels, shouldUseProgressiveAnimation, () => props.dailyIncome.length, () => props.dailyExpenses.length],
+  () => {
+    scheduleProgressiveReveal()
+  },
+  { immediate: true },
+)
 
 // Calculate daily income amounts (for positive area)
 const dailyIncomeAmounts = computed(() => {
@@ -559,6 +716,7 @@ const chartData = computed(() => {
         pointHoverBorderColor: '#ffffff',
         pointHoverBorderWidth: 2,
         tension: 0.4,
+        cubicInterpolationMode: 'monotone',
         fill: true,
         order: 1, // Draw first (behind expenses)
       })
@@ -591,6 +749,7 @@ const chartData = computed(() => {
         pointHoverBorderColor: '#ffffff',
         pointHoverBorderWidth: 2,
         tension: 0.4,
+        cubicInterpolationMode: 'monotone',
         fill: true,
         order: 2, // Draw on top of income (creates overlap)
       })
@@ -610,6 +769,7 @@ const chartData = computed(() => {
         pointHoverBorderColor: '#a855f7',
         pointHoverBorderWidth: 2,
         tension: 0.4,
+        cubicInterpolationMode: 'monotone',
         fill: false,
         order: 3, // Draw on top of everything
       })
@@ -643,19 +803,39 @@ const chartData = computed(() => {
       pointHoverBorderColor: '#ffffff',
       pointHoverBorderWidth: 2,
       tension: 0.4,
+      cubicInterpolationMode: 'monotone',
       fill: true,
     })
   }
 
+  const totalLabelCount = dateLabels.value.length
+  const visiblePointCount = shouldUseProgressiveAnimation.value
+    ? Math.max(1, Math.min(animatedPointCount.value || 1, totalLabelCount))
+    : totalLabelCount
+
   return {
-    labels: dateLabels.value,
-    datasets,
+    labels: dateLabels.value.slice(0, visiblePointCount),
+    datasets: datasets.map((dataset) => ({
+      ...dataset,
+      data: Array.isArray(dataset.data) ? dataset.data.slice(0, visiblePointCount) : dataset.data,
+    })),
   }
 })
 
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  animation: {
+    duration: shouldUseProgressiveAnimation.value ? 0 : 900,
+    easing: shouldUseProgressiveAnimation.value ? 'linear' : 'easeOutQuart',
+  },
+  transitions: {
+    active: {
+      animation: {
+        duration: 450,
+      },
+    },
+  },
   interaction: {
     mode: 'index',
     intersect: false,
@@ -706,6 +886,15 @@ const chartOptions = computed(() => ({
         callback: function (value, index) {
           // Show every nth label based on data length to avoid crowding
           const labels = dateLabels.value
+          if (props.isOneYearView && labels.length > 0) {
+            const label = String(labels[index] || '')
+            const dayToken = label.split(' ')[1]
+            const day = Number(dayToken)
+            if (day === 1 || index === labels.length - 1) {
+              return labels[index] || ''
+            }
+            return ''
+          }
           if (labels.length <= 7) {
             return labels[index] || ''
           }
@@ -720,6 +909,11 @@ const chartOptions = computed(() => ({
     y: {
       display: true,
       beginAtZero: true,
+      min: 0,
+      grace: 0,
+      afterBuildTicks: (scale) => {
+        scale.ticks = scale.ticks.filter((tick) => tick.value >= 0)
+      },
       grid: {
         display: true,
         color: 'rgba(255, 255, 255, 0.1)',
@@ -774,6 +968,20 @@ function formatCurrency(amount) {
 .chart-header-right {
   display: flex;
   flex-direction: column;
+}
+
+.chart-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.glance-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .chart-header-right {
@@ -1165,6 +1373,10 @@ function formatCurrency(amount) {
   .chart-header {
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .chart-header-center {
+    align-items: flex-start;
   }
 
   .chart-header-right {
