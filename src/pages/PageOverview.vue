@@ -193,7 +193,7 @@
                     @click.stop="goToEditTransaction(event)"
                   >
                     <div class="event-name">{{ event.name }}</div>
-                    <div class="event-amount">${{ getEventDisplayAmount(event) }}</div>
+                    <div class="event-amount">${{ getEventDisplayAmount(event).toFixed(2) }}</div>
                   </div>
                 </div>
               </div>

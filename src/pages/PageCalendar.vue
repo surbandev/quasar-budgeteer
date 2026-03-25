@@ -579,7 +579,10 @@ async function calculateLoanDetails() {
     const response = await eventsStore.calculateLoanDetails(loanData)
 
     if (response) {
-      loanCalculationPreview.value = response
+      loanCalculationPreview.value = {
+        ...response,
+        monthlyPayment: roundToCents(response.monthlyPayment),
+      }
 
       // Auto-update the end date
       if (response.endDate) {
@@ -590,6 +593,12 @@ async function calculateLoanDetails() {
     console.error('Error calculating loan:', error)
     loanCalculationPreview.value = null
   }
+}
+
+function roundToCents(value) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) return 0
+  return Math.round((numericValue + Number.EPSILON) * 100) / 100
 }
 
 function formatLoanDate(dateString) {
@@ -644,7 +653,7 @@ async function saveTransaction() {
 
       // Add calculated monthly payment from loan calculation
       if (loanCalculationPreview.value) {
-        eventData.monthlyPayment = parseFloat(loanCalculationPreview.value.monthlyPayment)
+        eventData.monthlyPayment = roundToCents(loanCalculationPreview.value.monthlyPayment)
         eventData.calculatedEndDate = new Date(loanCalculationPreview.value.endDate)
           .toISOString()
           .split('T')[0]
