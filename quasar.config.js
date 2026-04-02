@@ -3,7 +3,7 @@
 
 import { defineConfig } from '#q-app/wrappers'
 
-export default defineConfig((/* ctx */) => {
+export default defineConfig((ctx) => {
   return {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
@@ -42,7 +42,8 @@ export default defineConfig((/* ctx */) => {
         node: 'node20',
       },
 
-      vueRouterMode: 'history', // available values: 'hash', 'history'
+      // Hash routing avoids blank screens when the WebView loads file/localhost paths.
+      vueRouterMode: ctx.mode.capacitor ? 'hash' : 'history',
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,

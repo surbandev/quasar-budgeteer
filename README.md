@@ -38,6 +38,29 @@ npm run format
 quasar build
 ```
 
+### Android APK (Capacitor)
+
+Web assets must be built and synced before Gradle can package an APK. From the project root:
+
+```bash
+npm run build:cap
+```
+
+That runs `quasar build -m capacitor` and triggers the Android Gradle step. To rebuild only the native APK after the web bundle is already in `src-capacitor/www`, use Gradle from the Android project directory:
+
+```bash
+cd src-capacitor/android
+./gradlew clean assembleRelease   # release APK (see signing notes in android/keystore.properties.example)
+./gradlew assembleDebug           # debug APK (signed with the debug keystore; good for sideloading)
+```
+
+Output locations:
+
+- **Debug:** `src-capacitor/android/app/build/outputs/apk/debug/app-debug.apk`
+- **Release:** `src-capacitor/android/app/build/outputs/apk/release/app-release.apk`
+
+You need the Android SDK configured (for example `local.properties` with `sdk.dir=…`). Open the project in Android Studio from `src-capacitor/android` if you prefer a GUI build.
+
 ### Run tests
 
 Tests use [Vitest](https://vitest.dev/) and live in `src/tests/` for easy access.

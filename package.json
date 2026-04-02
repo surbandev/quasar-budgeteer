@@ -15,7 +15,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "dev": "quasar dev",
+    "dev:cap": "quasar dev -m capacitor -T android",
     "build": "quasar build",
+    "build:cap": "quasar build -m capacitor -T android",
     "postinstall": "quasar prepare"
   },
   "dependencies": {
