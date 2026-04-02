@@ -247,7 +247,12 @@ function handleCreateAccount() {
 .register-page {
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .background-scene {
@@ -531,12 +536,15 @@ function handleCreateAccount() {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  max-width: 850px;
+  flex: 1 1 auto;
+  max-width: min(850px, 100%);
   width: 100%;
+  min-width: 0;
   margin: 8rem auto 2rem;
   padding: 0 2rem;
   overflow: visible;
   z-index: 2;
+  box-sizing: border-box;
 }
 
 /* When showing registration form (step 2), reduce top margin */
@@ -546,6 +554,7 @@ function handleCreateAccount() {
 
 .plan-selection-container {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -592,12 +601,15 @@ function handleCreateAccount() {
   color: #764ba2;
 }
 
+/* auto-fit: stacks to one column when container is narrower than ~2×min + gap */
 .pricing-plans {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 2rem;
   width: 100%;
+  min-width: 0;
   margin-bottom: 2rem;
+  box-sizing: border-box;
 }
 
 .plan-card {
@@ -942,6 +954,25 @@ function handleCreateAccount() {
 
   .step-line {
     width: 50px;
+  }
+
+  .register-container {
+    margin-top: 4rem;
+    padding: 0 1rem;
+  }
+
+  .register-container.form-step {
+    margin-top: 2rem;
+  }
+
+  .plan-card {
+    padding: 1.25rem 1.5rem;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .form-title {
+    font-size: 2.25rem;
   }
 }
 
