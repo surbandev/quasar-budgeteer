@@ -11,7 +11,7 @@
       <div class="upcoming-transactions-list">
         <div
           v-for="transaction in displayedTransactions"
-          :key="transaction.id || transaction._id"
+          :key="`${transaction.id || transaction._id}-${transaction.date}`"
           class="upcoming-transaction-item"
         >
           <div class="transaction-left-section">
@@ -149,13 +149,12 @@ const upcomingTransactions = computed(() => {
     }
   })
 
-  // Sort by date (earliest first)
-  return upcomingEvents
-    .sort((a, b) => {
-      const dateA = new Date(a.date)
-      const dateB = new Date(b.date)
-      return dateB - dateA
-    })
+  // Soonest due first (ascending by date / days remaining)
+  return upcomingEvents.sort((a, b) => {
+    const dateA = new Date(a.date)
+    const dateB = new Date(b.date)
+    return dateA - dateB
+  })
 })
 
 const allTransactionsThisMonth = computed(() => {
@@ -187,14 +186,14 @@ const allTransactionsThisMonth = computed(() => {
   return currentMonthEvents.sort((a, b) => {
     const dateA = new Date(a.date)
     const dateB = new Date(b.date)
-    return dateB - dateA
+    return dateA - dateB
   })
 })
 
 const displayedTransactions = computed(() => {
   return showAllTransactions.value
     ? allTransactionsThisMonth.value
-    : upcomingTransactions.value.slice(0, 10)
+    : upcomingTransactions.value
 })
 
 const totalUpcomingExpenses = computed(() => {

@@ -246,6 +246,9 @@ const currentCalendarDate = ref(new Date())
 const isOneYearView = ref(false)
 const quickRangePreset = ref('month')
 
+/** Dedupes parallel/duplicate fetches when refs + @update handlers both fire */
+let lastFetchedRangeKey = ''
+
 const monthOptions = computed(() => constantsStore.getMonths)
 const years = computed(() => constantsStore.getYears())
 const daysOfWeek = computed(() => constantsStore.getDaysOfWeek)
@@ -405,8 +408,7 @@ const monthlyExpenses = computed(() => eventsStore.monthlyExpenses)
 const monthlySavings = computed(() => eventsStore.monthlySavings)
 const monthlyBalance = computed(() => eventsStore.cashFlow)
 
-// Calculate total expenses left this month (future expenses only, excluding income and savings)
-// This matches the logic in UpcomingTransactions component
+// Fallback when date range refs are unset: real calendar month only (future debits in that month)
 const totalExpensesLeftThisMonth = computed(() => {
   const eventsToUse =
     combinedActiveEvents.value.length > 0 ? combinedActiveEvents.value : filteredEvents.value
@@ -459,18 +461,7 @@ const totalExpensesLeftThisMonth = computed(() => {
   return total
 })
 
-// Multi-month chart range (matches SpentThisMonthChart isMoreThanMonth: > 31 days)
-const isChartTermRange = computed(() => {
-  if (!hasDateRangeFilter() || !startDate.value || !endDate.value) return false
-  const start = new Date(startDate.value.getTime())
-  const end = new Date(endDate.value.getTime())
-  start.setHours(0, 0, 0, 0)
-  end.setHours(0, 0, 0, 0)
-  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-  return daysDiff > 31
-})
-
-// Future debits in the selected date range (for 6m / 1y / custom term)
+// Future debits in the selected date range (single month, 6m, 1y, or custom)
 const totalExpensesLeftThisTerm = computed(() => {
   if (!hasDateRangeFilter() || !startDate.value || !endDate.value) return 0
   const eventsToUse =
@@ -515,9 +506,13 @@ const totalExpensesLeftThisTerm = computed(() => {
   return total
 })
 
-const totalExpensesLeftForChart = computed(() =>
-  isChartTermRange.value ? totalExpensesLeftThisTerm.value : totalExpensesLeftThisMonth.value,
-)
+// Use the visible chart range whenever set; "this month" otherwise (real calendar month)
+const totalExpensesLeftForChart = computed(() => {
+  if (hasDateRangeFilter() && startDate.value && endDate.value) {
+    return totalExpensesLeftThisTerm.value
+  }
+  return totalExpensesLeftThisMonth.value
+})
 
 // Computed properties for date range
 const startDate = computed(() => {
@@ -568,10 +563,29 @@ watch([endMonth, endYear], () => {
   }
 })
 
+// Refresh chart/store when Start/End dropdowns change (q-select month + custom #selected
+// can skip @update:model-value; watching refs is reliable).
+watch(
+  () => [
+    startYear.value,
+    startMonth.value,
+    startDay.value,
+    endYear.value,
+    endMonth.value,
+    endDay.value,
+  ],
+  async () => {
+    if (!hasDateRangeFilter()) return
+    await updateFilteredData()
+  },
+  { flush: 'post' },
+)
+
 function initializeDateRangeToCurrentMonth() {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth()
+  currentCalendarDate.value = new Date(year, month, 1)
   startMonth.value = month + 1
   startDay.value = 1
   startYear.value = year
@@ -639,20 +653,39 @@ function hasDateRangeFilter() {
   )
 }
 
-function handlePreviousMonth() {
+/** Keep loaded events / chart in sync with the calendar month being viewed */
+async function applyVisibleCalendarMonthToDataRange() {
+  const d = currentCalendarDate.value
+  const y = d.getFullYear()
+  const m = d.getMonth()
+  const lastDay = new Date(y, m + 1, 0).getDate()
+  startMonth.value = m + 1
+  startDay.value = 1
+  startYear.value = y
+  endMonth.value = m + 1
+  endDay.value = lastDay
+  endYear.value = y
+  isOneYearView.value = false
+  quickRangePreset.value = 'month'
+  await updateFilteredData()
+}
+
+async function handlePreviousMonth() {
   currentCalendarDate.value = new Date(
     currentCalendarDate.value.getFullYear(),
     currentCalendarDate.value.getMonth() - 1,
     1,
   )
+  await applyVisibleCalendarMonthToDataRange()
 }
 
-function handleNextMonth() {
+async function handleNextMonth() {
   currentCalendarDate.value = new Date(
     currentCalendarDate.value.getFullYear(),
     currentCalendarDate.value.getMonth() + 1,
     1,
   )
+  await applyVisibleCalendarMonthToDataRange()
 }
 
 async function updateFilteredData() {
@@ -682,6 +715,12 @@ async function updateFilteredData() {
     endDayNum = endMaxDays
     endDay.value = endMaxDays
   }
+
+  const pendingKey = `${startYearNum}-${startMonthNum}-${startDayNum}|${endYearNum}-${endMonthNum}-${endDayNum}`
+  if (pendingKey === lastFetchedRangeKey) {
+    return
+  }
+  lastFetchedRangeKey = pendingKey
 
   const start = new Date(startYearNum, startMonthNum - 1, startDayNum)
   start.setHours(0, 0, 0, 0)
@@ -954,21 +993,11 @@ async function loadProfileData() {
         initializeDateRangeToCurrentMonth()
       }
 
-      if (hasDateRangeFilter()) {
-        const start = new Date(startYear.value, startMonth.value - 1, startDay.value)
-        start.setHours(0, 0, 0, 0)
-        const end = new Date(endYear.value, endMonth.value - 1, endDay.value)
-        end.setHours(0, 0, 0, 0)
-        await eventsStore.fetchEventsForDateRange(start, end)
-      } else {
-        await eventsStore.fetchEventsForMonthByScenario()
-      }
-
       if (!activeScenarios.value.has('default')) {
         activeScenarios.value.add('default')
       }
 
-      await updateScenarioData()
+      await updateFilteredData()
     }
   } catch (error) {
     console.error('Error loading profile data:', error)
