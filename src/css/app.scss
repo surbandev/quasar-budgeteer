@@ -1,3 +1,9 @@
+// Match dark UI behind Safari/Chrome UI and overscroll (body alone can leave html white).
+html {
+  background-color: #0d0d0d;
+  color-scheme: dark;
+}
+
 // CSS Variables for consistent theming
 :root {
   // Background colors
