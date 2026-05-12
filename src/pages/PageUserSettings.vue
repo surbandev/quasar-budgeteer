@@ -176,26 +176,6 @@
           </div>
         </div>
 
-        <div class="form-section">
-          <h3 class="section-title">Preferences</h3>
-
-          <div class="form-group">
-            <label>Theme</label>
-            <q-select
-              v-model="userSettings.theme"
-              :options="themeOptions"
-              option-label="label"
-              option-value="value"
-              class="form-input theme-select"
-              borderless
-              dense
-              emit-value
-              map-options
-              dark
-            />
-          </div>
-        </div>
-
         <div class="form-actions">
           <q-btn
             type="button"
@@ -220,16 +200,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from '../stores/auth'
-import { useConstantsStore } from '../stores/constants'
 
 const router = useRouter()
 const $q = useQuasar()
 const authStore = useAuthStore()
-const constantsStore = useConstantsStore()
 
 const isSaving = ref(false)
 const isLoading = ref(false)
@@ -244,11 +222,8 @@ const userSettings = ref({
   currentPassword: '',
   newPassword: '',
   confirmPassword: '',
-  theme: 'dark',
   subscriptionLevel: 'basic',
 })
-
-const themeOptions = computed(() => constantsStore.getThemeOptions)
 
 function handleUsernameInput(value) {
   // Convert to lowercase only - prevent uppercase letters
@@ -275,10 +250,6 @@ async function loadUserSettings() {
       userSettings.value.email = user.email || ''
       userSettings.value.subscriptionLevel = user.subscriptionLevel || 'basic'
     }
-
-    // Load theme from localStorage (like original app)
-    const savedTheme = localStorage.getItem('theme') || 'dark'
-    userSettings.value.theme = savedTheme
   } catch (error) {
     console.error('Error loading user settings:', error)
     $q.notify({
@@ -335,7 +306,6 @@ async function saveSettings() {
     // Clear password fields after successful update
     userSettings.value.newPassword = ''
     userSettings.value.confirmPassword = ''
-    localStorage.setItem('theme', userSettings.value.theme)
 
     $q.notify({
       type: 'positive',
@@ -365,14 +335,6 @@ function goBack() {
 onMounted(async () => {
   await loadUserSettings()
 })
-
-// Watch theme changes and save to localStorage (like original app)
-watch(
-  () => userSettings.value.theme,
-  (newTheme) => {
-    localStorage.setItem('theme', newTheme)
-  },
-)
 </script>
 
 <style scoped lang="scss">
@@ -599,43 +561,6 @@ watch(
 
   &:hover {
     color: rgba(255, 255, 255, 0.9);
-  }
-}
-
-// Force q-select to match q-input size exactly
-.theme-select {
-  width: 100%;
-
-  :deep(.q-field) {
-    min-height: 46px !important;
-    height: 46px !important;
-    max-height: 46px !important;
-  }
-
-  :deep(.q-field__control) {
-    min-height: 46px !important;
-    height: 46px !important;
-    max-height: 46px !important;
-    padding: 0.75rem 1rem !important;
-  }
-
-  :deep(.q-field__inner) {
-    min-height: 46px !important;
-    max-height: 46px !important;
-    height: 46px !important;
-    padding: 0 !important;
-  }
-
-  :deep(.q-field__native) {
-    min-height: auto !important;
-    height: auto !important;
-    padding: 0 !important;
-    line-height: 1.5 !important;
-  }
-
-  :deep(.q-field__append) {
-    min-width: auto !important;
-    padding: 0 !important;
   }
 }
 
