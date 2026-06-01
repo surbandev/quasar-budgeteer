@@ -30,10 +30,31 @@ const props = defineProps({
 
 const constantsStore = useConstantsStore()
 
+/** Normalize Vite glob entries to a URL string (dev vs production differ). */
+function resolveGlobAsset(entry) {
+  if (!entry) return null
+  if (typeof entry === 'string') return entry
+  let value = entry.default ?? entry
+  if (typeof value === 'function') value = value()
+  return typeof value === 'string' ? value : null
+}
+
+function resolveGlobMap(globResult) {
+  return Object.fromEntries(
+    Object.entries(globResult).map(([key, value]) => [key, resolveGlobAsset(value)]),
+  )
+}
+
 // Import all brand icons dynamically (SVG, PNG, JPEG, and JPG)
-const brandIconsSvg = import.meta.glob('../assets/icons/brands/*.svg', { eager: true, as: 'url' })
-const brandIconsPng = import.meta.glob('../assets/*.png', { eager: true, as: 'url' })
-const brandIconsJpeg = import.meta.glob('../assets/*.{jpeg,jpg,JPG}', { eager: true, as: 'url' })
+const brandIconsSvg = resolveGlobMap(
+  import.meta.glob('../assets/icons/brands/*.svg', { eager: true, query: '?url', import: 'default' }),
+)
+const brandIconsPng = resolveGlobMap(
+  import.meta.glob('../assets/*.png', { eager: true, query: '?url', import: 'default' }),
+)
+const brandIconsJpeg = resolveGlobMap(
+  import.meta.glob('../assets/*.{jpeg,jpg,JPG}', { eager: true, query: '?url', import: 'default' }),
+)
 
 const iconPath = computed(() => {
   // First try to get icon by transaction name
@@ -50,16 +71,15 @@ const iconPath = computed(() => {
         ]
 
         for (const key of possibleKeys) {
-          if (brandIconsPng[key]) {
-            return brandIconsPng[key]
-          }
+          const url = brandIconsPng[key]
+          if (url) return url
         }
 
         // If exact match doesn't work, try to find by filename
         const iconFileName = iconFile.toLowerCase().replace('.png', '')
-        for (const [key, value] of Object.entries(brandIconsPng)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
+        for (const [key, url] of Object.entries(brandIconsPng)) {
+          if (url && key.toLowerCase().includes(iconFileName)) {
+            return url
           }
         }
       } else if (iconFile.endsWith('.jpeg') || iconFile.endsWith('.jpg')) {
@@ -71,16 +91,15 @@ const iconPath = computed(() => {
         ]
 
         for (const key of possibleKeys) {
-          if (brandIconsJpeg[key]) {
-            return brandIconsJpeg[key]
-          }
+          const url = brandIconsJpeg[key]
+          if (url) return url
         }
 
         // If exact match doesn't work, try to find by filename
         const iconFileName = iconFile.toLowerCase().replace('.jpeg', '').replace('.jpg', '')
-        for (const [key, value] of Object.entries(brandIconsJpeg)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
+        for (const [key, url] of Object.entries(brandIconsJpeg)) {
+          if (url && key.toLowerCase().includes(iconFileName)) {
+            return url
           }
         }
       } else {
@@ -92,16 +111,15 @@ const iconPath = computed(() => {
         ]
 
         for (const key of possibleKeys) {
-          if (brandIconsSvg[key]) {
-            return brandIconsSvg[key]
-          }
+          const url = brandIconsSvg[key]
+          if (url) return url
         }
 
         // If exact match doesn't work, try to find by filename
         const iconFileName = iconFile.toLowerCase().replace('.svg', '')
-        for (const [key, value] of Object.entries(brandIconsSvg)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
+        for (const [key, url] of Object.entries(brandIconsSvg)) {
+          if (url && key.toLowerCase().includes(iconFileName)) {
+            return url
           }
         }
       }
@@ -124,16 +142,15 @@ const iconPath = computed(() => {
         ]
 
         for (const key of possibleKeys) {
-          if (brandIconsPng[key]) {
-            return brandIconsPng[key]
-          }
+          const url = brandIconsPng[key]
+          if (url) return url
         }
 
         // Fallback: search by filename
         const iconFileName = iconFile.toLowerCase().replace('.png', '')
-        for (const [key, value] of Object.entries(brandIconsPng)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
+        for (const [key, url] of Object.entries(brandIconsPng)) {
+          if (url && key.toLowerCase().includes(iconFileName)) {
+            return url
           }
         }
       } else if (
@@ -149,9 +166,8 @@ const iconPath = computed(() => {
         ]
 
         for (const key of possibleKeys) {
-          if (brandIconsJpeg[key]) {
-            return brandIconsJpeg[key]
-          }
+          const url = brandIconsJpeg[key]
+          if (url) return url
         }
 
         const iconFileName = iconFile
@@ -159,9 +175,9 @@ const iconPath = computed(() => {
           .replace('.jpeg', '')
           .replace('.jpg', '')
           .replace('.jpg', '')
-        for (const [key, value] of Object.entries(brandIconsJpeg)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
+        for (const [key, url] of Object.entries(brandIconsJpeg)) {
+          if (url && key.toLowerCase().includes(iconFileName)) {
+            return url
           }
         }
       } else if (iconFile.endsWith('.svg')) {
@@ -173,15 +189,14 @@ const iconPath = computed(() => {
         ]
 
         for (const key of possibleKeys) {
-          if (brandIconsSvg[key]) {
-            return brandIconsSvg[key]
-          }
+          const url = brandIconsSvg[key]
+          if (url) return url
         }
 
         const iconFileName = iconFile.toLowerCase().replace('.svg', '')
-        for (const [key, value] of Object.entries(brandIconsSvg)) {
-          if (key.toLowerCase().includes(iconFileName)) {
-            return value
+        for (const [key, url] of Object.entries(brandIconsSvg)) {
+          if (url && key.toLowerCase().includes(iconFileName)) {
+            return url
           }
         }
       }
