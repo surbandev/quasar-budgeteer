@@ -1443,27 +1443,6 @@ watch(
     }
   }
 
-  // Make calendar icons white for date inputs
-  :deep(input[type='date']) {
-    &::-webkit-calendar-picker-indicator {
-      filter: invert(1) brightness(1.5) !important;
-      cursor: pointer !important;
-      opacity: 1 !important;
-      background-color: transparent !important;
-    }
-
-    &::-moz-calendar-picker-indicator {
-      filter: invert(1) brightness(1.5) !important;
-    }
-  }
-}
-
-// Additional calendar icon styling at component level
-.transaction-view {
-  :deep(input[type='date']::-webkit-calendar-picker-indicator) {
-    filter: invert(1) brightness(2) !important;
-    cursor: pointer !important;
-  }
 }
 
 .calendar-grid-wrapper {
