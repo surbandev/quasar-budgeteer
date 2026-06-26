@@ -23,6 +23,11 @@ export default boot(async () => {
 
       if (!response.ok) {
         authStore.logout()
+      } else {
+        const data = await response.json()
+        if (data?.user) {
+          authStore.user = data.user
+        }
       }
     } catch {
       // Cannot verify the session — clear it so the user sees the login page

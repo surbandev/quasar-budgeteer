@@ -114,7 +114,7 @@ watch(
       bottomTab.value = 'overview'
     }
     // Tools route
-    else if (newPath === '/tools') {
+    else if (newPath === '/tools' || newPath === '/admin-settings') {
       bottomTab.value = 'tools'
     }
     // Other routes (feedback, settings, etc.) - reset to overview so tools tab can be clicked again

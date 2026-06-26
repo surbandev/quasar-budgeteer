@@ -10,6 +10,13 @@ const bcrypt = require('bcryptjs')
 var dbPool = undefined
 var userDBPools = new Map()
 
+const LEGACY_COLLATION_STATEMENTS = [
+  "SET NAMES utf8mb4 COLLATE utf8mb4_general_ci",
+  "SET collation_connection = 'utf8mb4_general_ci'",
+  "SET character_set_client = 'utf8mb4'",
+  "SET character_set_results = 'utf8mb4'",
+]
+
 function buildConnectionConfig(databaseName) {
   const config = {
     host: process.env.DB_HOST,
@@ -19,6 +26,8 @@ function buildConnectionConfig(databaseName) {
     connectTimeout: 30000,
     dateStrings: true,
     Promise: bluebird,
+    // Match legacy schema / stored procs (utf8mb4_general_ci) on MySQL 8 connections
+    charset: 'UTF8MB4_GENERAL_CI',
   }
 
   if (databaseName) {
@@ -38,6 +47,69 @@ function buildConnectionConfig(databaseName) {
   return config
 }
 
+function attachCollationHook(pool) {
+  const corePool = pool.pool ?? pool
+  if (typeof corePool.on === 'function') {
+    corePool.on('connection', (connection) => {
+      for (const sql of LEGACY_COLLATION_STATEMENTS) {
+        connection.query(sql)
+      }
+    })
+  }
+}
+
+function createPoolWithCollation(config) {
+  const pool = mysql.createPool(config)
+  attachCollationHook(pool)
+  return pool
+}
+
+async function applySessionCollation(connection) {
+  for (const sql of LEGACY_COLLATION_STATEMENTS) {
+    await connection.query(sql)
+  }
+}
+
+async function withMasterSession(callback) {
+  assert.ok(dbPool, 'Db has not been initialized. Please call initDB() first.')
+  const connection = await dbPool.getConnection()
+  try {
+    await applySessionCollation(connection)
+    return await callback(connection)
+  } finally {
+    connection.release()
+  }
+}
+
+async function dbQueryOneSession(sql, params) {
+  return withMasterSession(async (connection) => {
+    const [rows] = await connection.execute(sql, patchParams(params))
+    return _.first(rows)
+  })
+}
+
+async function dbExecuteOneSession(sql, params) {
+  return withMasterSession(async (connection) => {
+    const [resultSets] = await connection.execute(sql, patchParams(params))
+    if (Array.isArray(resultSets) && Array.isArray(resultSets[0])) {
+      return _.first(resultSets[0])
+    }
+    return _.first(resultSets)
+  })
+}
+
+async function dbExecuteSession(sql, params) {
+  return withMasterSession(async (connection) => {
+    return connection.execute(sql, patchParams(params))
+  })
+}
+
+async function dbQuerySession(sql, params) {
+  return withMasterSession(async (connection) => {
+    return connection.query(sql, patchParams(params))
+  })
+}
+
 var conf = buildConnectionConfig()
 
 async function initDB() {
@@ -45,7 +117,7 @@ async function initDB() {
     return
   }
   try {
-    dbPool = mysql.createPool(conf)
+    dbPool = createPoolWithCollation(conf)
     assert.ok(dbPool, 'dbPool creation failed')
     console.log('Connection established')
   } catch (e) {
@@ -55,7 +127,7 @@ async function initDB() {
 
 async function getPoolForDatabase(databaseName) {
   if (!userDBPools.has(databaseName)) {
-    const pool = mysql.createPool(buildConnectionConfig(databaseName))
+    const pool = createPoolWithCollation(buildConnectionConfig(databaseName))
     userDBPools.set(databaseName, pool)
   }
   return userDBPools.get(databaseName)
@@ -157,5 +229,9 @@ module.exports = {
   dbQueryOne,
   dbExecute,
   dbExecuteOne,
+  dbQueryOneSession,
+  dbExecuteOneSession,
+  dbExecuteSession,
+  dbQuerySession,
   checkAdminAccount,
 }

@@ -34,17 +34,37 @@ async function login(username, password) {
 }
 
 async function addUser(username, password, firstname,lastname, phone, email, database) {
-    let user = await db.dbQueryOne("SELECT * FROM users WHERE username = ? OR email = ?", [username, email]);
-    if (!user) {
-        // Hash password and create admin user
-        const hashedPassword = bcrypt.hashSync(password, 10);
-        user = await db.dbExecuteOne("CALL sp_users_add_user(?, ?, ?, ?, ?, ?, ?)", [username, hashedPassword, firstname,lastname, phone, email, database]);
-        return user;
-    } else {
-        return {
-            error: "Username or email already exists"
+    try {
+        const existing = await db.dbQueryOneSession(
+            `SELECT id FROM users
+             WHERE username COLLATE utf8mb4_general_ci = ?
+                OR email COLLATE utf8mb4_general_ci = ?
+             LIMIT 1`,
+            [username, email],
+        );
+        if (existing) {
+            return { error: "Username or email already exists" };
         }
+
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        return await addUserDirect(username, hashedPassword, firstname, lastname, phone, email);
+    } catch (e) {
+        console.error('Error in addUser:', e);
+        return { error: e.sqlMessage || e.message || 'Failed to create user' };
     }
+}
+
+async function addUserDirect(username, hashedPassword, firstname, lastname, phone, email) {
+    const id = uuidv4();
+    const uid = uuidv4();
+
+    await db.dbExecuteSession(
+        `INSERT INTO users (id, uid, username, password, firstname, lastname, phone, email, \`db\`)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, uid, username, hashedPassword, firstname, lastname, phone || '', email, ''],
+    );
+
+    return { id, username, email };
 }
 
 async function getUser(userID) {
@@ -58,7 +78,7 @@ async function getUser(userID) {
     }
 }
 
-async function updateUser(userID, username, password, email) {
+async function updateUser(userID, username, email, password) {
     let user = await db.dbQueryOne("SELECT * FROM users WHERE id = ?", [userID]);
     if (!user) {
         return {
@@ -66,9 +86,13 @@ async function updateUser(userID, username, password, email) {
         }
     }
 
-    const hashedPassword = bcrypt.hashSync(password, 10);
     try {
-        user = await db.dbExecute("CALL sp_users_update_user(?,?,?,?)", [userID, username, hashedPassword, email]);
+        if (password) {
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            await db.dbExecute("CALL sp_users_update_user(?,?,?,?)", [userID, username, hashedPassword, email]);
+        } else {
+            await db.dbExecute("UPDATE users SET username = ?, email = ? WHERE id = ?", [username, email, userID]);
+        }
     } catch (e) {
         console.error('Error updating user:', e);
         return {
@@ -78,8 +102,30 @@ async function updateUser(userID, username, password, email) {
     return { user };
 }
 
+async function getUserByUsername(username) {
+    return db.dbQueryOne("SELECT id, username, email FROM users WHERE username = ?", [username]);
+}
+
+async function deleteUser(userID) {
+    const user = await db.dbQueryOne("SELECT id FROM users WHERE id = ?", [userID]);
+    if (!user) {
+        return { error: "User does not exist" };
+    }
+
+    try {
+        await db.dbExecute("DELETE FROM users WHERE id = ?", [userID]);
+        return { success: true };
+    } catch (e) {
+        console.error('Error deleting user:', e);
+        return { error: "Unable to delete user. They may still have linked data." };
+    }
+}
+
 async function getAllUsers() {
-    let users = await db.dbQuery("SELECT id, username, email FROM users ORDER BY username", []);
+    let users = await db.dbQuery(
+        "SELECT id, username, email, firstname, lastname, phone FROM users ORDER BY username",
+        [],
+    );
     return users;
 }
 
@@ -89,5 +135,7 @@ module.exports = {
     addUser,
     getUser,
     updateUser,
-    getAllUsers
+    getAllUsers,
+    getUserByUsername,
+    deleteUser
 }

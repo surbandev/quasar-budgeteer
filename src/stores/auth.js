@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 import { getAPIURL } from '../js/api'
+import { isAdminUser, getUsernameFromToken } from '../js/admin'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -19,6 +20,10 @@ export const useAuthStore = defineStore('auth', () => {
   const getUserID = computed(() => userID.value)
   const isLoading = computed(() => loading.value)
   const hasError = computed(() => error.value !== null)
+  const isAdmin = computed(() => {
+    if (isAdminUser(user.value)) return true
+    return isAdminUser({ username: getUsernameFromToken(token.value) })
+  })
 
   // Actions
   async function login(username, password) {
@@ -161,6 +166,7 @@ export const useAuthStore = defineStore('auth', () => {
     getUserID,
     isLoading,
     hasError,
+    isAdmin,
     // Actions
     login,
     register,

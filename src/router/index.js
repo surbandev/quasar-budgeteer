@@ -55,11 +55,26 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     }
 
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+    const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
 
     if (requiresAuth && !authStore.isAuthenticated) {
       next('/login')
     } else if ((to.path === '/login' || to.path === '/register') && authStore.isAuthenticated) {
       next('/overview')
+    } else if (requiresAdmin) {
+      if (!authStore.currentUser && authStore.getUserID) {
+        try {
+          await authStore.fetchUser(authStore.getUserID)
+        } catch {
+          next('/tools')
+          return
+        }
+      }
+      if (!authStore.isAdmin) {
+        next('/tools')
+      } else {
+        next()
+      }
     } else {
       next()
     }

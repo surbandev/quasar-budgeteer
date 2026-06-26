@@ -37,6 +37,11 @@
             <q-icon name="flutter_dash" class="tool-icon" />
             <span class="tool-name">Weave</span>
           </div>
+
+          <div v-if="isAdmin" class="tool-bubble" @click="goToAdminSettings">
+            <q-icon name="admin_panel_settings" class="tool-icon admin-icon" />
+            <span class="tool-name">Admin Settings</span>
+          </div>
         </div>
       </div>
     </div>
@@ -44,9 +49,24 @@
 </template>
 
 <script setup>
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
+const isAdmin = computed(() => authStore.isAdmin)
+
+onMounted(async () => {
+  if (!authStore.currentUser && authStore.getUserID) {
+    try {
+      await authStore.fetchUser(authStore.getUserID)
+    } catch (error) {
+      console.warn('Could not load user for admin tools check:', error)
+    }
+  }
+})
 
 function goToFeedback() {
   router.push('/feedback')
@@ -62,6 +82,10 @@ function goToUserSettings() {
 
 function goToWeave() {
   router.push('/weave')
+}
+
+function goToAdminSettings() {
+  router.push('/admin-settings')
 }
 </script>
 
@@ -232,6 +256,10 @@ function goToWeave() {
   margin-bottom: 1rem;
   transition: all 0.3s ease;
   color: white;
+}
+
+.admin-icon {
+  color: #c084fc;
 }
 
 .tool-name {

@@ -89,6 +89,12 @@ const routes = [
         component: () => import('pages/PageWeave.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'admin-settings',
+        name: 'AdminSettings',
+        component: () => import('pages/PageAdminSettings.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
     ],
   },
 

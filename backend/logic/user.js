@@ -1,6 +1,7 @@
 const _ = require('lodash');
 
 const dal = require('../dal/user');
+const { createFullUser } = require('./provisionUser');
 
 // If add here, add to dal
 async function login(req, res) {
@@ -24,7 +25,7 @@ async function login(req, res) {
 
 async function getUser(req, res) {
     try {
-        const { userID } = req.body;
+        const userID = req.query.userID || req.body?.userID;
         let userObject = await dal.getUser(userID);
         let user = userObject.user;
         let error = userObject.error;
@@ -32,6 +33,9 @@ async function getUser(req, res) {
             res.statusMessage = error;
             res.status(404).send(error).end();
             return;
+        }
+        if (user?.password) {
+            delete user.password;
         }
         res.json({ user });
     } catch (e) {
@@ -42,32 +46,38 @@ async function getUser(req, res) {
 
 async function addUser(req, res) {
     try {
-        res.status(403).send().end();
-        return;
+        const { username, password, firstname, lastname, phone, email } = req.body;
+        const result = await createFullUser({
+            username,
+            password,
+            firstname,
+            lastname,
+            phone,
+            email,
+        });
 
-
-
-        const { username, password, firstname, lastname, phone, email, database } = req.body;
-        const result = await dal.addUser(username, password, firstname, lastname, phone, email, database);
-        let error = _.get(result,'error');
-        if (!error){
+        let error = _.get(result, 'error');
+        if (!error) {
             res.status(200).send().end();
             return;
-        }else{
-            res.statusMessage = error;
-            res.status(409).send().end();
-            return;
         }
+
+        res.statusMessage = error;
+        res.status(String(error).includes('already exists') ? 409 : 400).json({ error });
     } catch (e) {
-        res.statusMessage = 'Internal Server Error';
-        res.status(500).send().end();
+        console.error('Error in addUser:', e);
+        res.status(500).json({ error: e.sqlMessage || e.message || 'Internal Server Error' });
     }
+}
+
+async function register(req, res) {
+    res.status(403).send().end();
 }
 
 async function updateUser(req, res) {
     try {
         const { userID, username, password, email} = req.body;
-        const result = await dal.updateUser(userID, username, password, email);
+        const result = await dal.updateUser(userID, username, email, password);
         let error = _.get(result,'error');
         let user = _.get(result,'user');
         if (!error){
@@ -87,6 +97,7 @@ async function updateUser(req, res) {
 module.exports = {
     login,
     addUser,
+    register,
     getUser,
     updateUser
 }
