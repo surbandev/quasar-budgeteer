@@ -1,6 +1,6 @@
 /**
  * API base URL.
- * - Web dev/prod: empty string → same-origin `/api/...` (Quasar dev proxy or Netlify redirect)
+ * - Web dev/prod: empty string → same-origin `/api/...` (Quasar dev proxy or Railway)
  * - Capacitor builds: set API_URL at build time to your full backend URL
  */
 export function getAPIURL() {
