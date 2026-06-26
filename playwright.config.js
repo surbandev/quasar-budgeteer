@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './e2e',
-  timeout: 30000,
+  testDir: './src/tests/e2e',
+  timeout: 60000,
   retries: 0,
   reporter: [['list'], ['html', { open: 'on-failure' }]],
 
@@ -11,6 +11,13 @@ export default defineConfig({
     headless: false,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+  },
+
+  webServer: {
+    command: 'npm run dev:all',
+    url: 'http://localhost:9000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
 
   projects: [

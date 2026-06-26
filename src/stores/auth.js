@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userID = ref(localStorage.getItem('userID') || null)
   const loading = ref(false)
   const error = ref(null)
+  const authChecked = ref(false)
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
@@ -141,6 +142,10 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
   }
 
+  function setAuthChecked(value) {
+    authChecked.value = value
+  }
+
   return {
     // State
     user,
@@ -148,6 +153,7 @@ export const useAuthStore = defineStore('auth', () => {
     userID,
     loading,
     error,
+    authChecked,
     // Getters
     isAuthenticated,
     currentUser,
@@ -162,5 +168,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     updateUser,
     clearError,
+    setAuthChecked,
   }
 })

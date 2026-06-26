@@ -37,3 +37,8 @@ yarn-error.log*
 
 # local .env files
 .env.local*
+backend/.env
+backend/.env.railway
+backend/.env.railway-restore
+backend/node_modules
+/backups

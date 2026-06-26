@@ -1,3 +1,4 @@
+import { watch } from 'vue'
 import { defineRouter } from '#q-app/wrappers'
 import {
   createRouter,
@@ -5,6 +6,7 @@ import {
   createWebHistory,
   createWebHashHistory,
 } from 'vue-router'
+import { useAuthStore } from 'stores/auth'
 import routes from './routes'
 
 /*
@@ -34,13 +36,29 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   })
 
   // Navigation guard for authentication
-  Router.beforeEach((to, from, next) => {
-    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
-    const token = localStorage.getItem('token')
+  Router.beforeEach(async (to, from, next) => {
+    const authStore = useAuthStore()
 
-    if (requiresAuth && !token) {
+    if (!authStore.authChecked) {
+      await new Promise((resolve) => {
+        const stop = watch(
+          () => authStore.authChecked,
+          (checked) => {
+            if (checked) {
+              stop()
+              resolve()
+            }
+          },
+          { immediate: true },
+        )
+      })
+    }
+
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+
+    if (requiresAuth && !authStore.isAuthenticated) {
       next('/login')
-    } else if ((to.path === '/login' || to.path === '/register') && token) {
+    } else if ((to.path === '/login' || to.path === '/register') && authStore.isAuthenticated) {
       next('/overview')
     } else {
       next()

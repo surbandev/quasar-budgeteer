@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/tests/**/*.{spec,test}.{js,mjs,cjs,ts,mts,cts,vue}'],
-    exclude: ['node_modules', 'dist', '.quasar'],
+    exclude: ['node_modules', 'dist', '.quasar', 'src/tests/e2e/**'],
     globals: true,
   },
   resolve: {

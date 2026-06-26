@@ -1,23 +1,59 @@
 {
+
   "version": "0.2.0",
+
   "configurations": [
+
     {
+
       "name": "Run",
+
       "type": "node-terminal",
+
       "request": "launch",
-      "command": "quasar dev"
+
+      "command": "npm run dev:all"
+
     },
+
     {
-      "name": "Run E2E Tests",
+
+      "name": "Run (Railway DB)",
+
       "type": "node-terminal",
+
       "request": "launch",
-      "command": "npm run test:e2e"
+
+      "command": "npm run dev:all:railway"
+
     },
+
     {
-      "name": "Run Vitest",
+
+      "name": "Run Tests",
+
       "type": "node-terminal",
+
       "request": "launch",
+
       "command": "npm run test:run"
+
+    },
+
+    {
+
+      "name": "Deploy",
+
+      "type": "node-terminal",
+
+      "request": "launch",
+
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .vscode/deploy.ps1"
+
     }
+
   ]
+
 }
+
+
