@@ -179,13 +179,9 @@ async function handleLogin() {
     await authStore.login(username.value.trim().toLowerCase(), password.value)
 
     try {
-      await profileStore.fetchProfiles()
-      const userID = authStore.getUserID
-      const userProfile = profileStore.profiles.find((p) => p.id == userID || p._id == userID)
-      if (userProfile) {
-        profileStore.setCurrentProfile(userProfile)
-      } else {
-        profileStore.setCurrentProfile({ id: userID })
+      const resolvedProfile = await profileStore.resolveInitialProfile({ ignoreStoredProfile: true })
+      if (!resolvedProfile) {
+        profileStore.setCurrentProfile({ id: authStore.getUserID })
       }
     } catch (e) {
       console.error('Error setting current profile:', e)

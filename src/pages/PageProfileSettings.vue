@@ -23,15 +23,29 @@
             v-for="profile in profiles"
             :key="profile.id"
             class="profile-card"
-            :class="{ active: profile.id === currentProfile?.id }"
+            :class="{
+              active: profile.id === currentProfile?.id,
+              default: profile.id === defaultProfileId,
+            }"
           >
             <div class="profile-info">
               <q-icon name="person" size="md" class="profile-icon" />
               <div>
                 <div class="profile-name">{{ profile.first_name }} {{ profile.last_name }}</div>
+                <div v-if="profile.id === defaultProfileId" class="profile-badge">Default</div>
               </div>
             </div>
             <div class="profile-actions">
+              <q-btn
+                flat
+                dense
+                :icon="profile.id === defaultProfileId ? 'star' : 'star_border'"
+                :color="profile.id === defaultProfileId ? 'amber' : 'grey-5'"
+                :aria-label="
+                  profile.id === defaultProfileId ? 'Default profile' : 'Set as default profile'
+                "
+                @click="setDefaultProfile(profile)"
+              />
               <q-btn flat dense icon="edit" color="primary" @click="editProfile(profile)" />
               <q-btn
                 flat
@@ -162,6 +176,30 @@ const profileForm = ref({
 
 const profiles = computed(() => profileStore.profiles)
 const currentProfile = computed(() => profileStore.currentProfile)
+const defaultProfileId = computed(() => profileStore.defaultProfileId)
+
+async function setDefaultProfile(profile) {
+  if (profile.id === defaultProfileId.value) {
+    return
+  }
+
+  try {
+    await profileStore.setDefaultProfile(profile)
+    $q.notify({
+      type: 'positive',
+      message: `${profile.first_name} ${profile.last_name} is now your default profile`,
+      position: 'top',
+      timeout: 2000,
+    })
+  } catch (error) {
+    console.error('Error setting default profile:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to set default profile',
+      position: 'top',
+    })
+  }
+}
 
 function editProfile(profile) {
   editingProfile.value = profile
@@ -269,6 +307,7 @@ function closeDialog() {
 
 onMounted(async () => {
   await profileStore.fetchProfiles()
+  await profileStore.loadDefaultProfileId()
 })
 </script>
 
@@ -443,6 +482,10 @@ onMounted(async () => {
     background: rgba(76, 175, 80, 0.15);
     box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
   }
+
+  &.default {
+    border-color: rgba(255, 193, 7, 0.8);
+  }
 }
 
 .profile-info {
@@ -459,6 +502,15 @@ onMounted(async () => {
   font-size: 1.1rem;
   font-weight: 600;
   color: white;
+}
+
+.profile-badge {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffc107;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .profile-meta {

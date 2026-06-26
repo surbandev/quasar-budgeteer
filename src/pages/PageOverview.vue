@@ -716,7 +716,9 @@ async function updateFilteredData() {
     endDay.value = endMaxDays
   }
 
-  const pendingKey = `${startYearNum}-${startMonthNum}-${startDayNum}|${endYearNum}-${endMonthNum}-${endDayNum}`
+  const profileId = currentProfile.value?.id || currentProfile.value?._id || ''
+  const scenarioKey = [...activeScenarios.value].sort().join(',')
+  const pendingKey = `${profileId}|${scenarioKey}|${startYearNum}-${startMonthNum}-${startDayNum}|${endYearNum}-${endMonthNum}-${endDayNum}`
   if (pendingKey === lastFetchedRangeKey) {
     return
   }
@@ -949,26 +951,15 @@ async function initializeOverview() {
       router.push('/login')
       return
     }
-    const storedProfileID = localStorage.getItem('profileID')
 
     loading.value = true
 
-    await profileStore.fetchProfiles()
-
-    const matchedStoredProfile = profileStore.profiles.find(
-      (p) => p.id == storedProfileID || p._id == storedProfileID,
-    )
-    const matchedUserProfile = profileStore.profiles.find((p) => p.id == userID || p._id == userID)
-    const fallbackProfile = profileStore.profiles[0] || null
-    const resolvedProfile = matchedStoredProfile || matchedUserProfile || fallbackProfile
+    const resolvedProfile = await profileStore.resolveInitialProfile()
 
     if (!resolvedProfile) {
       router.push('/login')
       return
     }
-
-    await profileStore.setCurrentProfile(resolvedProfile)
-    localStorage.setItem('profileID', resolvedProfile.id || resolvedProfile._id)
 
     await loadProfileData()
   } catch (error) {
@@ -982,6 +973,15 @@ async function initializeOverview() {
 async function loadProfileData() {
   try {
     if (currentProfile.value) {
+      activeScenarios.value = new Set(['default'])
+      combinedActiveEvents.value = []
+      eventsStore.setFilteredEvents([])
+      eventsStore.combinedActiveEvents = []
+      dailySpendingData.value = []
+      dailyIncomeData.value = []
+      dailyExpensesData.value = []
+      lastFetchedRangeKey = ''
+
       calendarStore.setProfile(currentProfile.value)
       scenariosStore.setProfile(currentProfile.value)
       eventsStore.setProfile(currentProfile.value)

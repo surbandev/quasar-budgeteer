@@ -29,7 +29,7 @@ async function deleteUserSetting(req, res) {
 
 async function getUserSetting(req, res) {
     try {
-        const { setting } = req.body;
+        const setting = req.query.setting || req.body?.setting;
         const userID = req.user.id;
         const result = await dal.getUserSetting(userID,setting);
         res.json(_.get(result,'value',''));
