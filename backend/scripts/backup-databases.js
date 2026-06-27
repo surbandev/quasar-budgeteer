@@ -71,7 +71,14 @@ async function listDatabases(connection) {
 
 async function dumpDatabase(connection, databaseName, write) {
   write(`\n-- Database: ${databaseName}\n`)
-  write(`CREATE DATABASE IF NOT EXISTS ${escapeIdentifier(databaseName)};\n`)
+  write(
+    `CREATE DATABASE IF NOT EXISTS ${escapeIdentifier(databaseName)} ` +
+      `CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\n`,
+  )
+  write(
+    `ALTER DATABASE ${escapeIdentifier(databaseName)} ` +
+      `CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\n`,
+  )
   write(`USE ${escapeIdentifier(databaseName)};\n`)
 
   const [tables] = await connection.query(`SHOW FULL TABLES FROM ${escapeIdentifier(databaseName)}`)

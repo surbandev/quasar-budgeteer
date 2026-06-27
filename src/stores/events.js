@@ -433,12 +433,33 @@ export const useEventsStore = defineStore('events', () => {
     error.value = null
 
     try {
-      const url = `${getAPIURL()}/api/scenario/update-event`
-      const response = await axios.put(url, {
+      const endDate = updates.endDate
+      const payload = {
         eventID: eventId,
-        profileID: profile.value.id,
-        ...updates,
-      })
+        profileID: updates.profileID || profile.value.id,
+        scenarioID: updates.scenarioID,
+        name: updates.name,
+        description: updates.description ?? '',
+        type: updates.type,
+        category: updates.category,
+        frequency: updates.frequency,
+        startDate: updates.startDate,
+        endDate,
+        amount: Number(updates.amount),
+        active: updates.active !== false && updates.active !== 0,
+        principal:
+          updates.principal != null && updates.principal !== ''
+            ? Number(updates.principal)
+            : 0,
+        interest: updates.interest ? Number(updates.interest) : 0,
+        calculatedEndDate: updates.calculatedEndDate || endDate,
+        monthlyPayment: updates.monthlyPayment ? Number(updates.monthlyPayment) : 0,
+        term: updates.term ?? updates.loanTerm ?? 0,
+        escrow: updates.escrow ? Number(updates.escrow) : 0,
+      }
+
+      const url = `${getAPIURL()}/api/scenario/update-event`
+      const response = await axios.put(url, payload)
 
       await fetchEvents()
       await fetchEventsForMonthByScenario()

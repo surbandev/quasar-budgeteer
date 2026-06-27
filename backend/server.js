@@ -25,18 +25,12 @@ const port = Number(process.env.PORT) || 3000
 const distDir = path.join(__dirname, '..', 'dist', 'spa')
 const indexHtml = path.join(distDir, 'index.html')
 
-initDB().then(async () => {
-  const adminAccountValid = await checkAdminAccount()
-  if (!adminAccountValid) {
-    console.error('Failed to verify admin account. Exiting')
-    process.exit(1)
-  }
-
+function createApp({ serveStatic = prod } = {}) {
   const app = express()
   app.use(cors())
   app.use(express.json())
 
-  if (prod) {
+  if (serveStatic) {
     app.use(express.static(distDir))
     console.log('Serving UI from', distDir)
   } else {
@@ -56,7 +50,7 @@ initDB().then(async () => {
   app.use(apiDir + 'setting', settingRoutes)
   app.use(apiDir + 'feedback', feedbackRoutes)
 
-  if (prod) {
+  if (serveStatic) {
     app.get('*', (req, res) => {
       if (req.path.startsWith(apiDir)) {
         return res.status(404).json({ error: 'API route not found' })
@@ -65,7 +59,25 @@ initDB().then(async () => {
     })
   }
 
+  return app
+}
+
+async function start() {
+  await initDB()
+  const adminAccountValid = await checkAdminAccount()
+  if (!adminAccountValid) {
+    console.error('Failed to verify admin account. Exiting')
+    process.exit(1)
+  }
+
+  const app = createApp()
   app.listen(port, () => {
     console.log(`Server running on port ${port}`)
   })
-})
+}
+
+if (require.main === module) {
+  start()
+}
+
+module.exports = { createApp, start }

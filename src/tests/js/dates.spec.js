@@ -6,9 +6,21 @@ import {
   getLastDayOfMonth,
   addMonths,
   isSameDay,
+  toDateInputValue,
 } from 'src/js/dates.js'
 
 describe('dates.js', () => {
+  describe('toDateInputValue', () => {
+    it('returns YYYY-MM-DD from ISO datetime without timezone shift', () => {
+      expect(toDateInputValue('2108-03-03T05:00:00.000Z')).toBe('2108-03-03')
+    })
+
+    it('returns null for invalid values', () => {
+      expect(toDateInputValue(null)).toBe(null)
+      expect(toDateInputValue('not-a-date')).toBe(null)
+    })
+  })
+
   describe('fixDate', () => {
     it('returns value unchanged for null/undefined', () => {
       expect(fixDate(null)).toBe(null)

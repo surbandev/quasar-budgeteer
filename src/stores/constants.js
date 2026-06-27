@@ -164,6 +164,39 @@ export const useConstantsStore = defineStore('constants', () => {
     return loanCategories.includes(category)
   }
 
+  const CATEGORY_ALIASES = {
+    UTILITIES: 'UTILITY',
+    MISCELLANEOUS: 'MISC',
+    HOUSING: 'RENT',
+    'FOOD & DINING': 'DINING',
+    'FOOD & DRINKS': 'GROCERY',
+    TRANSPORTATION: 'MISC',
+    SHOPPING: 'MISC',
+    HEALTHCARE: 'INSURANCE',
+    EDUCATION: 'MISC',
+  }
+
+  const normalizeCategory = (category) => {
+    if (!category) {
+      return 'MISC'
+    }
+
+    const raw = String(category).trim()
+    const upper = raw.toUpperCase()
+    const validValues = categoryOptions.map((option) => option.value)
+
+    if (validValues.includes(upper)) {
+      return upper
+    }
+
+    const alias = CATEGORY_ALIASES[raw] || CATEGORY_ALIASES[upper]
+    if (alias) {
+      return alias
+    }
+
+    return validValues.includes(category) ? category : 'MISC'
+  }
+
   const getYears = (startOffset = 20, length = 60) => {
     return Array.from({ length }, (_, i) => new Date().getFullYear() - startOffset + i)
   }
@@ -305,6 +338,7 @@ export const useConstantsStore = defineStore('constants', () => {
     getThemeOptions,
     // Helper functions
     isLoanCategory,
+    normalizeCategory,
     getYears,
     getCategoryColor,
     getCategoryIcon,

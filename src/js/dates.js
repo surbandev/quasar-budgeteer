@@ -1,6 +1,32 @@
 import { DateTime } from 'luxon'
 
 /**
+ * Format a date for HTML date inputs and API payloads (YYYY-MM-DD).
+ * Avoids timezone shifts by preferring the date portion of ISO/SQL strings.
+ */
+export function toDateInputValue(dateValue) {
+  if (!dateValue) return null
+
+  const str = String(dateValue).trim()
+  const isoDate = str.slice(0, 10)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return isoDate
+  }
+
+  const dt = DateTime.fromISO(str)
+  if (dt.isValid) {
+    return dt.toISODate()
+  }
+
+  const dtSQL = DateTime.fromSQL(str)
+  if (dtSQL.isValid) {
+    return dtSQL.toISODate()
+  }
+
+  return null
+}
+
+/**
  * Fix date string to ensure proper formatting
  * @param {string|Date} dateValue - The date value to fix
  * @returns {string} - Properly formatted date string

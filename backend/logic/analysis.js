@@ -3,10 +3,10 @@ const scenarioDAL = require('../dal/scenario');
 const dates = require('./dates');
 const { addDays, isBefore, isWeekend, addMonths, isAfter, parseISO } = require('date-fns');
 
-async function getSummaryForDate(scenarioID, profileID, cutoffDateStr) {
+async function getSummaryForDate(scenarioID, profileID, cutoffDateStr, userID) {
     const cutoffDate = parseISO(cutoffDateStr);
 
-    const rows = await scenarioDAL.getEventsForScenarioByDate(scenarioID, profileID, cutoffDateStr);
+    const rows = await scenarioDAL.getEventsForScenarioByDate(scenarioID, profileID, cutoffDateStr, userID);
 
     let totalCredits = 0;
     let totalDebits = 0;

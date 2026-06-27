@@ -3,6 +3,7 @@ const dal = require('../dal/scenario');
 const profileDAL = require('../dal/profile');
 const analysisLogic = require('./analysis');
 const loanLogic = require('./loans');
+const { normalizeEventFields } = require('./eventFields');
 const { is } = require('bluebird');
 
 async function cloneScenario(req, res) {
@@ -196,10 +197,45 @@ async function createEvent(req, res) {
             return;
         }
 
-        const newEvent = await dal.createEvent(profileID, scenarioID, name, description, type, category, frequency, startDate, endDate, amount, active, principal, interest, calculatedEndDate, monthlyPayment, loanTerm, escrow, req.user.id);
+        const normalized = normalizeEventFields({
+            category,
+            startDate,
+            endDate,
+            calculatedEndDate,
+            amount,
+            active,
+            principal,
+            interest,
+            monthlyPayment,
+            loanTerm,
+            escrow,
+            description,
+        });
+
+        const newEvent = await dal.createEvent(
+            profileID,
+            scenarioID,
+            name,
+            normalized.description,
+            type,
+            normalized.category,
+            frequency,
+            normalized.startDate,
+            normalized.endDate,
+            normalized.amount,
+            normalized.active,
+            normalized.principal,
+            normalized.interest,
+            normalized.calculatedEndDate,
+            normalized.monthlyPayment,
+            normalized.term,
+            normalized.escrow,
+            req.user.id,
+        );
         res.json(newEvent);
         return;
     } catch (error) {
+        console.error('Failed to create event:', error);
         res.status(500).json({ error: 'Failed to create new Event' });
     }
 }
@@ -240,10 +276,47 @@ async function updateEvent(req, res) {
             return;
         }
 
-        const updatedEvent = await dal.updateEvent(eventID, scenarioID, profileID, name, description, type, category, frequency, startDate, endDate, amount, active, principal, interest, calculatedEndDate, monthlyPayment, term, escrow, req.user.id);
+        const normalized = normalizeEventFields({
+            category,
+            startDate,
+            endDate,
+            calculatedEndDate,
+            amount,
+            active,
+            principal,
+            interest,
+            monthlyPayment,
+            term,
+            loanTerm: req.body.loanTerm,
+            escrow,
+            description,
+        });
+
+        const updatedEvent = await dal.updateEvent(
+            eventID,
+            scenarioID,
+            profileID,
+            name,
+            normalized.description,
+            type,
+            normalized.category,
+            frequency,
+            normalized.startDate,
+            normalized.endDate,
+            normalized.amount,
+            normalized.active,
+            normalized.principal,
+            normalized.interest,
+            normalized.calculatedEndDate,
+            normalized.monthlyPayment,
+            normalized.term,
+            normalized.escrow,
+            req.user.id,
+        );
         res.json(updatedEvent);
         return;
     } catch (error) {
+        console.error('Failed to update event:', error);
         res.status(500).json({ error: 'Failed to update Event' });
     }
 }
@@ -362,7 +435,9 @@ async function toggleEventActive(req, res) {
 
         await dal.toggleEventActive(scenarioID, profileID, eventID, req.user.id);
 
-        return dal.getEventByIDs(scenarioID, profileID, eventID, req.user.id);
+        const updatedEvent = await dal.getEventByIDs(scenarioID, profileID, eventID, req.user.id);
+        res.json(updatedEvent);
+        return;
     } catch (error) {
         res.status(500).json({ error: 'Failed to get toggle event active' });
     }

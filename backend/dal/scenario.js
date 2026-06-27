@@ -147,8 +147,8 @@ async function getEventsForScenario(scenarioID, profileID, userID) {
 async function getEventsForScenarioByDate(scenarioID, profileID, date, userID) {
     return db.dbQuery(`
             SELECT * FROM scenario_events
-            WHERE scenarioID = ?
-            AND profileID = ?
+            WHERE scenario_id = ?
+            AND profile_id = ?
             AND active = 1
             AND start_date <= ?
             AND (end_date IS NULL OR end_date >= ?)

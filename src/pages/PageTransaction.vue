@@ -237,6 +237,7 @@ import { useProfileStore } from '../stores/profile'
 import { useConstantsStore } from '../stores/constants'
 import { useCalendarStore } from '../stores/calendar'
 import { showSuccessCheckmark } from '../js/utils'
+import { toDateInputValue } from '../js/dates'
 
 const router = useRouter()
 const route = useRoute()
@@ -321,14 +322,12 @@ function loadCurrentEventData() {
       name: currentEvent.value.name || '',
       description: currentEvent.value.description || '',
       type: currentEvent.value.type || 'DEBIT',
-      category: currentEvent.value.category || '',
+      category: constantsStore.normalizeCategory(currentEvent.value.category),
       frequency: currentEvent.value.frequency || 'MONTHLY',
-      startDate: currentEvent.value.start_date
-        ? new Date(currentEvent.value.start_date).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0],
-      endDate: currentEvent.value.end_date
-        ? new Date(currentEvent.value.end_date).toISOString().split('T')[0]
-        : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      startDate: toDateInputValue(currentEvent.value.start_date) || toDateInputValue(new Date()),
+      endDate:
+        toDateInputValue(currentEvent.value.end_date) ||
+        toDateInputValue(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)),
       amount: currentEvent.value.amount || null,
       active: currentEvent.value.active !== undefined ? currentEvent.value.active : true,
       profileID: currentEvent.value.profile_id || currentEvent.value.profileID || '',
@@ -391,9 +390,12 @@ async function loadEvent() {
 async function saveEvent() {
   isSaving.value = true
   try {
-    // Format dates before sending to API
-    const formattedStartDate = newEvent.value.startDate.split('T')[0]
-    const formattedEndDate = newEvent.value.endDate.split('T')[0]
+    const formattedStartDate = toDateInputValue(newEvent.value.startDate)
+    const formattedEndDate = toDateInputValue(newEvent.value.endDate)
+
+    if (!formattedStartDate || !formattedEndDate) {
+      throw new Error('Start date and end date are required')
+    }
 
     // Use currentEvent.id if editing an existing event
     const eventID = currentEvent.value ? currentEvent.value.id : null
@@ -407,7 +409,7 @@ async function saveEvent() {
         name: newEvent.value.name,
         description: newEvent.value.description || '',
         type: newEvent.value.type,
-        category: newEvent.value.category,
+        category: constantsStore.normalizeCategory(newEvent.value.category),
         frequency: newEvent.value.frequency,
         startDate: formattedStartDate,
         endDate: formattedEndDate,
@@ -429,7 +431,7 @@ async function saveEvent() {
         active: newEvent.value.active ?? true,
         amount: parseFloat(newEvent.value.amount),
         calculatedEndDate: formattedEndDate,
-        category: newEvent.value.category,
+        category: constantsStore.normalizeCategory(newEvent.value.category),
         description: newEvent.value.description || '',
         endDate: formattedEndDate,
         escrow: newEvent.value.escrow ? parseFloat(newEvent.value.escrow) : null,

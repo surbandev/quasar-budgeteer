@@ -11,6 +11,7 @@
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "vitest",
     "test:run": "vitest run && playwright test",
+    "test:api": "vitest run --config vitest.backend.config.js",
     "dev": "quasar dev",
     "dev:api": "npm start --prefix backend",
     "dev:all": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev\"",
