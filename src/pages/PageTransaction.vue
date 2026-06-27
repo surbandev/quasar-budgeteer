@@ -464,7 +464,11 @@ async function saveEvent() {
     // The plan changed, so the cached Home view is stale.
     overviewStore.invalidate()
 
-    router.back()
+    if (eventID) {
+      router.back()
+    } else {
+      router.push('/overview')
+    }
   } catch (error) {
     console.error('Error saving event:', error)
     $q.notify({

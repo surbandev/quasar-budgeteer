@@ -394,6 +394,7 @@ import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
 import { useProfileStore } from '../stores/profile'
+import { useOverviewStore } from '../stores/overview'
 import AppHeader from '../components/AppHeader.vue'
 
 const router = useRouter()
@@ -404,6 +405,7 @@ const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
 const constantsStore = useConstantsStore()
 const profileStore = useProfileStore()
+const overviewStore = useOverviewStore()
 
 // Buddy "Budget" header (green): PLAN = scenario manager, INSIGHTS = compare.
 function profileLabel(profile) {
@@ -705,7 +707,9 @@ async function saveTransaction() {
 
     await eventsStore.createEvent(eventData)
 
-    // Show success notification
+    // The plan changed, so the cached Overview snapshot is stale.
+    overviewStore.invalidate()
+
     $q.notify({
       type: 'positive',
       message: 'Transaction created successfully',
@@ -713,30 +717,7 @@ async function saveTransaction() {
       timeout: 2000,
     })
 
-    // Reset form
-    newTransaction.value = {
-      name: '',
-      description: '',
-      amount: null,
-      category: '',
-      frequency: 'MONTHLY',
-      type: 'DEBIT',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      scenarioID: '',
-      profileID: '',
-      interest: null,
-      principal: null,
-      loanTerm: '',
-      escrow: null,
-    }
-
-    // Reset loan calculation preview
-    loanCalculationPreview.value = null
-
-    // Refresh calendar data
-    await eventsStore.fetchEventsForMonthByScenario()
-    calendarStore.updateCalendarDays()
+    router.push('/overview')
   } catch (error) {
     console.error('Error saving transaction:', error)
     $q.notify({
