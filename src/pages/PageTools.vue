@@ -1,62 +1,130 @@
 <template>
   <q-page class="tools-page">
-    <!-- Background animations -->
-    <div class="background-scene">
-      <div class="stars"></div>
-
-      <div class="math-equations">
-        <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
-        <div class="equation equation-2">e^(iπ) + 1 = 0</div>
-        <div class="equation equation-3">∇ × E = -∂B/∂t</div>
-        <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
-      </div>
-    </div>
+    <AppHeader variant="neutral" title="Tools" gear-to="/user-settings" />
 
     <div class="tools-container">
-      <h2 class="tools-title">Tools</h2>
+      <!-- Profile summary card -->
+      <button type="button" class="profile-card" @click="goToProfileSettings">
+        <span class="profile-avatar">
+          <q-icon name="person" size="32px" />
+        </span>
+        <span class="profile-meta">
+          <span class="profile-name">{{ userName }}</span>
+          <span class="profile-tier">{{ accountTier }}</span>
+        </span>
+        <q-icon name="chevron_right" size="22px" class="profile-chevron" />
+      </button>
 
-      <div class="tools-layout">
-        <!-- Tools row: Profile Settings, User Settings, Feedback, Weave -->
-        <div class="tools-top-row">
-          <div class="tool-bubble" @click="goToProfileSettings">
-            <q-icon name="person" class="tool-icon" />
-            <span class="tool-name">Profile Settings</span>
-          </div>
-
-          <div class="tool-bubble" @click="goToUserSettings">
-            <q-icon name="settings" class="tool-icon" />
-            <span class="tool-name">User Settings</span>
-          </div>
-
-          <div class="tool-bubble" @click="goToFeedback">
-            <q-icon name="chat_bubble" class="tool-icon" />
-            <span class="tool-name">Feedback</span>
-          </div>
-
-          <div class="tool-bubble" @click="goToWeave">
-            <q-icon name="flutter_dash" class="tool-icon" />
-            <span class="tool-name">Weave</span>
-          </div>
-
-          <div v-if="isAdmin" class="tool-bubble" @click="goToAdminSettings">
-            <q-icon name="admin_panel_settings" class="tool-icon admin-icon" />
-            <span class="tool-name">Admin Settings</span>
-          </div>
-        </div>
+      <!-- Buddy-style card grid -->
+      <div class="tools-grid">
+        <button
+          v-for="card in cards"
+          :key="card.key"
+          type="button"
+          class="tool-card"
+          @click="card.action"
+        >
+          <span class="tool-chip" :style="{ background: card.color }">
+            <q-icon :name="card.icon" size="24px" />
+          </span>
+          <span class="tool-title">{{ card.title }}</span>
+          <span class="tool-desc">{{ card.desc }}</span>
+        </button>
       </div>
+
+      <p class="tools-version">Version: {{ appVersion }}</p>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useProfileStore } from '../stores/profile'
+import { useCalendarStore } from '../stores/calendar'
+import { useOverviewStore } from '../stores/overview'
+import AppHeader from '../components/AppHeader.vue'
 
+const $q = useQuasar()
 const router = useRouter()
 const authStore = useAuthStore()
+const profileStore = useProfileStore()
+const calendarStore = useCalendarStore()
+const overviewStore = useOverviewStore()
 
 const isAdmin = computed(() => authStore.isAdmin)
+const appVersion = '0.0.1'
+
+const userName = computed(() => {
+  const user = authStore.currentUser
+  if (!user) return 'Your Account'
+  if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`
+  return user.first_name || user.username || user.email || 'Your Account'
+})
+
+const accountTier = computed(() => (isAdmin.value ? 'ADMIN ACCOUNT' : 'BASIC ACCOUNT'))
+
+// Buddy-style tool cards. Each colored chip mirrors Buddy's icon tiles.
+const cards = computed(() => {
+  const list = [
+    {
+      key: 'profile',
+      title: 'Profile Settings',
+      desc: 'Manage your profile details',
+      icon: 'person',
+      color: '#3b82f6',
+      action: goToProfileSettings,
+    },
+    {
+      key: 'user',
+      title: 'User Settings',
+      desc: 'Appearance, themes and preferences',
+      icon: 'tune',
+      color: '#84cc16',
+      action: goToUserSettings,
+    },
+    {
+      key: 'feedback',
+      title: 'Feedback',
+      desc: "We'd love to hear what's on your mind",
+      icon: 'chat_bubble',
+      color: '#2fb38a',
+      action: goToFeedback,
+    },
+    {
+      key: 'weave',
+      title: 'Weave',
+      desc: 'Visualize and weave your plans together',
+      icon: 'auto_awesome',
+      color: '#a855f7',
+      action: goToWeave,
+    },
+  ]
+
+  if (isAdmin.value) {
+    list.push({
+      key: 'admin',
+      title: 'Admin Settings',
+      desc: 'Administrative controls and tools',
+      icon: 'admin_panel_settings',
+      color: '#ec4899',
+      action: goToAdminSettings,
+    })
+  }
+
+  list.push({
+    key: 'logout',
+    title: 'Sign Out',
+    desc: 'Sign out of your current session',
+    icon: 'logout',
+    color: '#ef4444',
+    action: confirmLogout,
+  })
+
+  return list
+})
 
 onMounted(async () => {
   if (!authStore.currentUser && authStore.getUserID) {
@@ -87,242 +155,159 @@ function goToWeave() {
 function goToAdminSettings() {
   router.push('/admin-settings')
 }
+
+function confirmLogout() {
+  $q.dialog({
+    title: 'Sign Out',
+    message: 'Are you sure you want to sign out of your session?',
+    cancel: true,
+    persistent: true,
+    color: 'primary',
+  }).onOk(async () => {
+    try {
+      await authStore.logout()
+      profileStore.resetCurrentProfile()
+      calendarStore.resetForNewUser()
+      overviewStore.clear()
+      router.push('/login')
+    } catch (error) {
+      console.error('Error during logout:', error)
+      router.push('/login')
+    }
+  })
+}
 </script>
 
 <style scoped lang="scss">
 .tools-page {
-  padding: 2rem 1rem;
+  padding: 0;
   min-height: 100vh;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-}
-
-.background-scene {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-}
-
-.stars {
-  display: none;
-}
-
-.math-equations {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.equation {
-  position: absolute;
-  font-family: 'Times New Roman', serif;
-  font-size: 1.2rem;
-  font-weight: 300;
-  background: linear-gradient(
-    135deg,
-    #667eea 0%,
-    #764ba2 25%,
-    #f093fb 50%,
-    #f5576c 75%,
-    #4facfe 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  opacity: 0;
-  transform: scale(0.8);
-  white-space: nowrap;
-  text-shadow:
-    0 0 30px rgba(102, 126, 234, 0.6),
-    0 0 40px rgba(118, 75, 162, 0.4),
-    0 0 50px rgba(240, 147, 251, 0.3);
-}
-
-.equation-1 {
-  top: 15%;
-  left: 10%;
-  animation: equationFade 8s ease-in-out infinite 0s;
-}
-.equation-2 {
-  top: 25%;
-  right: 15%;
-  animation: equationFade 8s ease-in-out infinite 1s;
-}
-.equation-3 {
-  top: 65%;
-  left: 15%;
-  animation: equationFade 8s ease-in-out infinite 2s;
-}
-.equation-4 {
-  top: 85%;
-  right: 15%;
-  animation: equationFade 8s ease-in-out infinite 3s;
-}
-
-@keyframes equationFade {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) rotate(-2deg);
-  }
-  25% {
-    opacity: 0.4;
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.1) rotate(1deg);
-  }
-  75% {
-    opacity: 0.4;
-    transform: scale(1) rotate(0deg);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.8) rotate(-2deg);
-  }
+  background: var(--page-bg);
 }
 
 .tools-container {
-  max-width: 1200px;
-  width: 100%;
+  max-width: 720px;
   margin: 0 auto;
-  position: relative;
-  z-index: 2;
+  padding: 1.1rem 1rem 6rem;
 }
 
-.tools-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 3rem 0;
-  text-align: center;
-  letter-spacing: -0.5px;
-}
-
-.tools-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 4rem;
-  align-items: center;
-  padding: 2rem 1rem;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.tools-top-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 4rem;
+.profile-card {
   width: 100%;
-  flex-wrap: wrap;
-}
-
-.tool-bubble {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 1rem;
+  text-align: left;
+  border: 1px solid var(--buddy-hairline);
+  background: var(--buddy-surface);
+  border-radius: var(--buddy-card-radius);
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1rem;
   cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 1rem;
+  transition: transform 0.2s ease, background 0.2s ease;
 
   &:hover {
-    transform: translateY(-8px);
-
-    .tool-icon {
-      transform: scale(1.15);
-    }
-
-    .tool-name {
-      color: rgba(255, 255, 255, 1);
-    }
-  }
-
-  &:active {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
+    background: var(--buddy-surface-2);
   }
 }
 
-.tool-icon {
-  font-size: 96px !important;
-  margin-bottom: 1rem;
-  transition: all 0.3s ease;
-  color: white;
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--buddy-surface-inset);
+  color: rgba(255, 255, 255, 0.65);
 }
 
-.admin-icon {
-  color: #c084fc;
+.profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
-.tool-name {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1rem;
-  font-weight: 500;
+.profile-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--buddy-text);
+}
+
+.profile-tier {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--buddy-text-dim);
+}
+
+.profile-chevron {
+  color: var(--buddy-text-faint);
+  flex-shrink: 0;
+}
+
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  transition: color 0.3s ease;
-  white-space: nowrap;
-}
+  gap: 0.55rem;
+  border: 1px solid var(--buddy-hairline);
+  background: var(--buddy-surface);
+  border-radius: var(--buddy-card-radius);
+  padding: 1.4rem 1rem 1.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
 
-// Desktop optimizations
-@media (min-width: 1024px) {
-  .tools-layout {
-    gap: 5rem;
-    padding: 2rem;
-  }
-
-  .tools-top-row {
-    gap: 6rem;
+  &:hover {
+    transform: translateY(-3px);
+    background: var(--buddy-surface-2);
   }
 }
 
-@media (max-width: 768px) {
-  .tools-page {
-    padding: 1.5rem 0.5rem;
-  }
-
-  .tools-title {
-    font-size: 2rem;
-    margin: 0 0 2rem 0;
-  }
-
-  .tools-layout {
-    gap: 3rem;
-    padding: 1rem 0.5rem;
-  }
-
-  .tools-top-row {
-    gap: 2rem;
-    flex-wrap: wrap;
-  }
-
-  .tool-icon {
-    font-size: 72px !important;
-  }
-
-  .tool-name {
-    font-size: 0.9rem;
-  }
+.tool-chip {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 0.35rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
-@media (max-width: 480px) {
-  .tools-top-row {
-    gap: 1.5rem;
-  }
+.tool-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--buddy-text);
+}
 
-  .tool-icon {
-    font-size: 64px !important;
-  }
+.tool-desc {
+  font-size: 0.82rem;
+  line-height: 1.25;
+  color: var(--buddy-text-dim);
+}
 
-  .tool-name {
-    font-size: 0.85rem;
+.tools-version {
+  text-align: center;
+  color: var(--buddy-text-faint);
+  font-size: 0.85rem;
+  margin: 1.75rem 0 0;
+}
+
+@media (max-width: 360px) {
+  .tools-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

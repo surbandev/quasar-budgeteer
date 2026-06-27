@@ -118,11 +118,13 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useProfileStore } from '../stores/profile'
 import { useAuthStore } from '../stores/auth'
+import { useOverviewStore } from '../stores/overview'
 
 const router = useRouter()
 const $q = useQuasar()
 const profileStore = useProfileStore()
 const authStore = useAuthStore()
+const overviewStore = useOverviewStore()
 
 const username = ref('')
 const password = ref('')
@@ -188,6 +190,14 @@ async function handleLogin() {
       profileStore.setCurrentProfile({ id: authStore.getUserID })
     }
 
+    // Warm the Home screen's data while still on the login spinner, so the
+    // Overview renders instantly (and can animate) the moment we land on it.
+    try {
+      await overviewStore.preload(profileStore.currentProfile)
+    } catch (e) {
+      console.error('Overview preload failed (will load on Home):', e)
+    }
+
     router.push('/overview')
   } catch (error) {
     console.error('Login failed:', error)
@@ -238,7 +248,7 @@ async function handleLogin() {
   right: 0;
   bottom: 0;
   z-index: 0;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
 }
 
 .stars {

@@ -35,6 +35,17 @@ const routes = [
         name: 'Budget',
         component: () => import('pages/PageCalendar.vue'),
         meta: { requiresAuth: true },
+        // The standalone calendar view was folded into Overview. Only the
+        // transaction add/edit and scenarios views remain live here; anything
+        // else (bare /budget or the deprecated ?view=calendar) goes to Overview
+        // so users never hit the dead "Calendar moved to Overview" stub.
+        beforeEnter: (to) => {
+          const view = to.query.view
+          if (view !== 'transaction' && view !== 'scenarios') {
+            return { path: '/overview' }
+          }
+          return true
+        },
       },
       {
         path: 'transaction',
@@ -52,6 +63,12 @@ const routes = [
         path: 'profile-settings',
         name: 'ProfileSettings',
         component: () => import('pages/PageProfileSettings.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'compare',
+        name: 'ScenarioCompare',
+        component: () => import('pages/PageScenarioCompare.vue'),
         meta: { requiresAuth: true },
       },
       {

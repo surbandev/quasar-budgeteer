@@ -112,7 +112,7 @@ async function deleteScenario() {
 }
 
 function goBack() {
-  router.push('/budget')
+  router.push('/overview')
 }
 </script>
 

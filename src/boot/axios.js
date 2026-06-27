@@ -1,6 +1,7 @@
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
 import { fixDate } from '../js/dates'
+import { endSessionAndRedirect } from '../js/session'
 
 // Create axios instance
 const api = axios.create()
@@ -60,9 +61,9 @@ export default boot(({ app }) => {
         const hadToken = Boolean(localStorage.getItem('token'))
 
         if (hadToken) {
-          localStorage.removeItem('token')
-          localStorage.removeItem('userID')
-          window.location.replace('/login')
+          // Centralized teardown: clears auth + cached data and routes to /login
+          // safely in both history and hash (mobile) router modes.
+          endSessionAndRedirect()
         }
       }
 
@@ -127,9 +128,9 @@ export default boot(({ app }) => {
         const hadToken = Boolean(localStorage.getItem('token'))
 
         if (hadToken) {
-          localStorage.removeItem('token')
-          localStorage.removeItem('userID')
-          window.location.replace('/login')
+          // Centralized teardown: clears auth + cached data and routes to /login
+          // safely in both history and hash (mobile) router modes.
+          endSessionAndRedirect()
         }
       }
 

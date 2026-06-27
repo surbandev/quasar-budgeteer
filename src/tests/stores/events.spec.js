@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useEventsStore } from 'src/stores/events.js'
+import { useScenariosStore } from 'src/stores/scenarios.js'
 
 vi.mock('axios')
 vi.mock('src/js/api.js', () => ({ getAPIURL: () => 'https://test.example' }))
@@ -164,6 +165,26 @@ describe('events store', () => {
     const evts = [{ id: 1, name: 'E1' }]
     store.setFilteredEvents(evts)
     expect(store.getFilteredEvents).toEqual(evts)
+  })
+
+  it('isMonthSnapshotFresh returns true after marking the current month', () => {
+    const store = useEventsStore()
+    const scenariosStore = useScenariosStore()
+    store.setProfile({ id: 1 })
+    scenariosStore.currentScenario = { id: 2 }
+    const date = new Date(2025, 5, 1)
+    store.setCurrentDate(date)
+    store.markMonthSnapshot(date)
+    expect(store.isMonthSnapshotFresh(date)).toBe(true)
+    expect(store.isMonthSnapshotFresh(new Date(2025, 4, 1))).toBe(false)
+  })
+
+  it('reset clears month snapshot', () => {
+    const store = useEventsStore()
+    store.setProfile({ id: 1 })
+    store.markMonthSnapshot(new Date(2025, 0, 1))
+    store.reset()
+    expect(store.isMonthSnapshotFresh(new Date(2025, 0, 1))).toBe(false)
   })
 
   it('filterEventsByDateRange filters by date range', () => {

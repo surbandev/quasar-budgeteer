@@ -4,139 +4,81 @@
       <router-view />
     </q-page-container>
 
-    <!-- Bottom Navigation -->
+    <!-- Bottom Navigation (Buddy-style floating pill) -->
     <q-footer class="bottom-nav">
-      <q-tabs
-        v-model="bottomTab"
-        class="bottom-tabs"
-        active-color="primary"
-        indicator-color="transparent"
-        @update:model-value="onBottomTabChange"
-      >
-        <q-tab name="overview" icon="visibility" label="Overview" no-caps class="bottom-tab" />
-        <q-tab name="budget" icon="sync" label="Budget" no-caps class="bottom-tab" />
-        <q-tab name="tools" icon="work" label="Tools" no-caps class="bottom-tab" />
-        <q-tab name="logout" icon="logout" label="Sign Out" no-caps class="bottom-tab" />
-      </q-tabs>
+      <nav class="buddy-nav" role="tablist">
+        <button
+          v-for="item in navItems"
+          :key="item.id"
+          type="button"
+          class="buddy-nav-item"
+          :class="{ active: activeNav === item.id }"
+          :aria-selected="activeNav === item.id"
+          @click="goToNav(item.id)"
+        >
+          <q-icon :name="item.icon" size="22px" class="buddy-nav-icon" />
+          <span class="buddy-nav-label">{{ item.label }}</span>
+        </button>
+      </nav>
     </q-footer>
   </q-layout>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { useQuasar } from 'quasar'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useProfileStore } from '../stores/profile'
-import { useCalendarStore } from '../stores/calendar'
-import { useAuthStore } from '../stores/auth'
 
-const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
-const profileStore = useProfileStore()
-const calendarStore = useCalendarStore()
-const authStore = useAuthStore()
 
-const bottomTab = ref('overview')
+// Buddy bottom nav: three sections. "Overview" (home/spending/list),
+// "Budget" (plan/remaining/insights + scenarios), and "Tools" (the more hub).
+const navItems = [
+  { id: 'overview', label: 'Overview', icon: 'visibility' },
+  { id: 'budget', label: 'Budget', icon: 'donut_large' },
+  { id: 'tools', label: 'Tools', icon: 'work' },
+]
 
-async function onBottomTabChange(tabName) {
-  if (tabName === 'overview') {
-    if (route.path !== '/overview') {
-      router.push('/overview')
-    }
-  } else if (tabName === 'budget') {
-    if (route.path !== '/spending') {
-      router.push('/spending')
-    }
-  } else if (tabName === 'tools') {
-    // Always navigate to /tools, even if already there
-    // This allows re-clicking the tools tab after navigating away
-    router.push('/tools')
-  } else if (tabName === 'logout') {
-    // Show confirmation dialog before logout
-    $q.dialog({
-      title: 'Sign Out',
-      message: 'Are you sure you want to sign out of your session?',
-      cancel: true,
-      persistent: true,
-      color: 'primary',
-    })
-      .onOk(async () => {
-        // User confirmed logout
-        try {
-          await authStore.logout()
-          profileStore.resetCurrentProfile()
-          calendarStore.resetForNewUser()
-          router.push('/login')
-        } catch (error) {
-          console.error('Error during logout:', error)
-          router.push('/login')
-        }
-      })
-      .onCancel(() => {
-        // User cancelled - reset bottomTab to previous value
-        // Determine the correct tab based on current route
-        if (route.path === '/overview') {
-          bottomTab.value = 'overview'
-        } else if (route.path.startsWith('/budget')) {
-          bottomTab.value = 'budget'
-        } else if (route.path === '/tools') {
-          bottomTab.value = 'tools'
-        } else {
-          bottomTab.value = 'overview'
-        }
-      })
+// Pages that live under each bottom-nav section so the right item stays lit.
+const overviewPaths = ['/overview', '/spending', '/entries']
+const budgetPaths = ['/budget', '/create-scenario', '/delete-scenario', '/compare']
+const toolsPaths = [
+  '/tools',
+  '/admin-settings',
+  '/user-settings',
+  '/profile-settings',
+  '/feedback',
+  '/weave',
+]
+
+const activeNav = computed(() => {
+  const path = route.path
+  if (overviewPaths.includes(path)) return 'overview'
+  if (budgetPaths.includes(path)) return 'budget'
+  if (toolsPaths.includes(path)) return 'tools'
+  return ''
+})
+
+function goToNav(id) {
+  if (id === 'overview') {
+    if (route.path !== '/overview') router.push('/overview')
+  } else if (id === 'budget') {
+    router.push({ path: '/budget', query: { view: 'scenarios' } })
+  } else if (id === 'tools') {
+    if (route.path !== '/tools') router.push('/tools')
   }
 }
-
-// Watch route changes to update currentTab and bottomTab
-watch(
-  () => [route.path, route.query.eventID],
-  ([newPath, eventID]) => {
-    // Overview routes
-    if (newPath === '/overview') {
-      bottomTab.value = 'overview'
-    } else if (newPath === '/spending') {
-      bottomTab.value = 'budget'
-    } else if (newPath === '/entries') {
-      bottomTab.value = 'overview'
-    }
-    // Budget routes
-    else if (newPath.startsWith('/budget')) {
-      bottomTab.value = 'budget'
-    }
-    // Transaction route - if it has eventID, it's from budget, show budget tabs
-    else if (newPath === '/transaction' && eventID) {
-      bottomTab.value = 'budget'
-    }
-    // Transaction route without eventID - new transaction, show dashboard tabs
-    else if (newPath === '/transaction' && !eventID) {
-      bottomTab.value = 'overview'
-    }
-    // Tools route
-    else if (newPath === '/tools' || newPath === '/admin-settings') {
-      bottomTab.value = 'tools'
-    }
-    // Other routes (feedback, settings, etc.) - reset to overview so tools tab can be clicked again
-    else {
-      // Clear tab selection on secondary pages so tapping any bottom tab always navigates.
-      // This fixes cases where users are on /feedback with "overview" already selected.
-      bottomTab.value = null
-    }
-  },
-  { immediate: true },
-)
 </script>
 
 <style scoped lang="scss">
 .main-layout {
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
   min-height: 100vh;
 }
 
-// Header with purple gradient (like the screenshot)
+// Header gradient (themeable via --header-gradient)
 .app-header {
-  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+  background: var(--header-gradient);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
 }
 
@@ -229,61 +171,82 @@ watch(
   padding-bottom: 70px; // Space for bottom nav
 }
 
-// Bottom navigation
+// Bottom navigation — always fixed like Buddy; content scrolls underneath.
 .bottom-nav {
-  background: rgba(30, 30, 30, 0.98);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-}
+  position: fixed !important;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  padding: 0 0.9rem calc(env(safe-area-inset-bottom, 0px) + 0.7rem);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
 
-.bottom-tabs {
-  :deep(.q-tab) {
-    color: rgba(255, 255, 255, 0.6);
-    min-height: 64px;
-    padding: 0.5rem;
-
-    &.q-tab--active {
-      color: #a855f7;
-    }
-
-    .q-tab__icon {
-      font-size: 24px;
-      margin-bottom: 4px;
-    }
-
-    .q-tab__label {
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
+  .buddy-nav {
+    pointer-events: auto;
   }
 }
 
-@media (min-width: 1024px) {
-  .with-mobile-header {
-    padding-bottom: 0;
+// Reserve space so page content is not hidden behind the fixed pill.
+.main-layout :deep(.q-page-container) {
+  padding-bottom: var(--buddy-scroll-padding-bottom);
+  background: var(--page-bg-solid);
+}
+
+.buddy-nav {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--buddy-surface);
+  border: 1px solid var(--buddy-hairline);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.buddy-nav-item {
+  flex: 1;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0.45rem 0.5rem;
+  border-radius: 999px;
+  color: var(--buddy-text-dim);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+
+  .buddy-nav-icon {
+    transition: color 0.2s ease, transform 0.2s ease;
   }
 
-  // Bottom nav styling for desktop
-  .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
+  .buddy-nav-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
 
-  .bottom-tabs {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 3rem;
-    gap: 1.5rem;
+  &:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
 
-    :deep(.q-tab) {
-      flex: 1;
-      max-width: 150px;
+  &.active {
+    color: var(--buddy-accent);
+    background: rgba(168, 85, 247, 0.12);
+
+    .buddy-nav-icon {
+      color: var(--buddy-accent);
     }
   }
 }
+
 </style>

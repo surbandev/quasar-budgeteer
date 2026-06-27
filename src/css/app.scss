@@ -57,6 +57,89 @@ html {
   // Pill/Badge colors
   --bg-pill: rgba(255, 255, 255, 0.1);
   --text-pill: rgba(255, 255, 255, 0.9);
+
+  // ---- Themeable tokens (overridden per-theme via [data-theme='...']) ----
+  // Shared page background gradient used by every page root container.
+  --page-bg: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  --page-bg-solid: #0d0d0d;
+  // Gradient used for clipped/glowing page titles.
+  --title-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  --title-glow: none;
+  // Surface tokens. Default look = Buddy's solid lifted cards.
+  --glass-bg: #16181d;
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-border-hover: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --glass-shadow-hover: 0 14px 40px rgba(0, 0, 0, 0.5);
+  // Accent gradient for primary buttons / toggles.
+  --accent-gradient: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  --bottom-nav-bg: rgba(30, 30, 30, 0.98);
+  --bottom-nav-border: rgba(255, 255, 255, 0.1);
+  --header-gradient: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+  --fab-glow: 0 6px 16px rgba(168, 85, 247, 0.45);
+
+  // ---- Buddy design language (the new default look) ----
+  // Near-black app canvas + slightly lifted cards with generous radii.
+  --buddy-bg: #0c0d10;
+  --buddy-surface: #16181d;
+  --buddy-surface-2: #1d2026;
+  --buddy-surface-inset: #2a2e36;
+  --buddy-card-radius: 20px;
+  --buddy-text: #ffffff;
+  --buddy-text-dim: rgba(255, 255, 255, 0.55);
+  --buddy-text-faint: rgba(255, 255, 255, 0.38);
+  --buddy-hairline: rgba(255, 255, 255, 0.07);
+
+  // Section-colored gradient headers (Buddy uses a different hue per section).
+  --buddy-header-overview: linear-gradient(165deg, #a855f7 0%, #8b3bf0 55%, #7c3aed 100%);
+  --buddy-header-budget: linear-gradient(165deg, #2fb38a 0%, #21997a 55%, #178c74 100%);
+  --buddy-header-neutral: linear-gradient(165deg, #20242b 0%, #16181d 100%);
+  // Accent used by the active bottom-nav item / overview chart line.
+  --buddy-accent: #a855f7;
+  // Fixed bottom nav clearance for scrollable pages.
+  --buddy-nav-offset: calc(env(safe-area-inset-bottom, 0px) + 5.75rem);
+  // Uniform vertical rhythm between Buddy cards + matching space above the nav.
+  --buddy-card-gap: 0.75rem;
+  // Nav height + card gap (+ small buffer so the fixed pill doesn't eat the gap).
+  --buddy-scroll-padding-bottom: calc(var(--buddy-nav-offset) + 1.25rem);
+  // Header gradient extension + matching pull on the first card (Buddy overlap).
+  --buddy-header-overlap-pad: 4.75rem;
+  --buddy-header-overlap-pull: -3.75rem;
+  // Frosted card that sits over the colored header (Overview + Budget).
+  --buddy-overlap-card-bg: rgba(16, 18, 22, 0.52);
+  --buddy-overlap-card-blur: 26px;
+}
+
+// ============================================================================
+// Holographic theme — a futuristic neon-cyan command center look.
+// Driven by the `data-theme` attribute the theme store sets on <html>.
+// ============================================================================
+html[data-theme='holographic'] {
+  background-color: #020912;
+
+  --page-bg: radial-gradient(circle at 50% -10%, #0c3056 0%, #061a33 42%, #020912 100%);
+  --page-bg-solid: #020912;
+
+  --title-gradient: linear-gradient(135deg, #22d3ee 0%, #38bdf8 45%, #a855f7 100%);
+  --title-glow: 0 0 18px rgba(34, 211, 238, 0.45);
+
+  --glass-bg: rgba(13, 42, 74, 0.4);
+  --glass-border: rgba(34, 211, 238, 0.28);
+  --glass-border-hover: rgba(34, 211, 238, 0.6);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 22px rgba(34, 211, 238, 0.12);
+  --glass-shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 30px rgba(34, 211, 238, 0.22);
+
+  --accent-gradient: linear-gradient(135deg, #22d3ee 0%, #2563eb 100%);
+  --bottom-nav-bg: rgba(5, 22, 43, 0.96);
+  --bottom-nav-border: rgba(34, 211, 238, 0.3);
+  --header-gradient: linear-gradient(180deg, #0e4d7a 0%, #073459 55%, #041f38 100%);
+  --fab-glow: 0 6px 18px rgba(34, 211, 238, 0.5);
+
+  // Re-theme everything that uses Quasar's runtime primary/secondary/accent
+  // CSS variables (color="primary" buttons, tabs, spinners, badges, etc.).
+  --q-primary: #22d3ee;
+  --q-secondary: #38bdf8;
+  --q-accent: #818cf8;
 }
 
 // draw nav
@@ -77,7 +160,7 @@ input::-webkit-inner-spin-button {
 
 // Dark theme and glassmorphism styles (matches login/register pages)
 body {
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   min-height: 100vh;
@@ -85,20 +168,54 @@ body {
 
 // Glass card styling (matches login/register glassmorphism)
 .glass-card {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: var(--glass-bg) !important;
   backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border-radius: 16px;
-  transition: all 0.3s ease;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--buddy-card-radius);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--glass-shadow-hover);
   }
 
   .q-card__section {
     color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+// First card pulled over the section header — frosted glass so header color shows through.
+.buddy-overlap-card {
+  margin-top: var(--buddy-header-overlap-pull);
+  position: relative;
+  z-index: 3;
+  background: var(--buddy-overlap-card-bg) !important;
+  backdrop-filter: blur(var(--buddy-overlap-card-blur)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--buddy-overlap-card-blur)) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  border-radius: var(--buddy-card-radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  transition: none;
+  overflow: hidden;
+
+  :deep(.q-card__section) {
+    position: relative;
+    z-index: 1;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0) 32%
+    );
+    pointer-events: none;
   }
 }
 
@@ -232,8 +349,18 @@ input[type='date'],
 }
 
 // Page container styling
+.q-layout,
+.q-page-container {
+  background: var(--page-bg-solid);
+}
+
 .q-page {
   background: transparent;
+}
+
+// Quasar's default inner-loading overlay is light; keep it dark everywhere.
+.q-inner-loading {
+  background: rgba(13, 13, 13, 0.72) !important;
 }
 
 // Stats card styling (for dashboard)
@@ -568,5 +695,71 @@ body .q-dialog__inner .q-card {
   to {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+// ============================================================================
+// Holographic theme — app-chrome overrides
+// These restyle shared chrome (titles, menus, dialogs, buttons, scrollbar) that
+// hardcode colors in their own rules. The default theme is left untouched.
+// ============================================================================
+html[data-theme='holographic'] {
+  // Gradient page titles -> holographic cyan with a soft glow.
+  .form-title,
+  .app-title,
+  .tools-title,
+  .scenarios-title,
+  .transaction-title,
+  .view-title,
+  .overview-title {
+    background: var(--title-gradient) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: var(--title-glow) !important;
+  }
+
+  // Menus / dropdowns
+  .q-menu {
+    background: rgba(6, 24, 46, 0.96) !important;
+    border-color: rgba(34, 211, 238, 0.3) !important;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 0 24px rgba(34, 211, 238, 0.18) !important;
+  }
+
+  // Dialogs
+  .q-dialog .q-card,
+  .q-dialog__inner .q-card,
+  body .q-dialog .q-card,
+  body .q-dialog__inner .q-card {
+    background: rgba(6, 24, 46, 0.97) !important;
+    border-color: rgba(34, 211, 238, 0.35) !important;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.55),
+      0 0 30px rgba(34, 211, 238, 0.18) !important;
+  }
+
+  .q-dialog__actions .q-btn:not(.q-btn--flat) {
+    background: var(--accent-gradient) !important;
+    box-shadow: 0 4px 15px rgba(34, 211, 238, 0.35) !important;
+  }
+
+  // Primary buttons / toggles -> cyan accent gradient
+  .q-btn--unelevated.q-btn--standard.bg-primary {
+    background: var(--accent-gradient) !important;
+  }
+
+  .q-toggle--truthy .q-toggle__track {
+    background: var(--accent-gradient) !important;
+  }
+
+  // Scrollbar -> cyan
+  ::-webkit-scrollbar-thumb {
+    background: rgba(34, 211, 238, 0.35);
+
+    &:hover {
+      background: rgba(34, 211, 238, 0.55);
+    }
   }
 }

@@ -1,7 +1,20 @@
 <template>
   <q-page class="calendar-page">
+    <AppHeader
+      v-if="currentView === 'scenarios'"
+      variant="budget"
+      overlap-content
+      label="Budget"
+      :title="budgetTitle"
+      :tabs="budgetTabs"
+      active-tab="plan"
+      gear-to="/tools"
+      right-icon="add"
+      right-label="Add transaction"
+      @right="goToAddTransaction"
+    />
     <div class="calendar-container">
-      <q-inner-loading :showing="isInitializing" />
+      <q-inner-loading :showing="isInitializing && currentView !== 'scenarios'" />
 
       <!-- Calendar View -->
       <div v-if="currentView === 'calendar'" class="calendar-view">
@@ -19,21 +32,8 @@
 
       <!-- Scenarios View -->
       <div v-else-if="currentView === 'scenarios'" class="scenarios-view">
-        <!-- Background animations -->
-        <div class="background-scene">
-          <div class="math-equations">
-            <div class="equation equation-1">∫ f(x)dx = F(x) + C</div>
-            <div class="equation equation-2">e^(iπ) + 1 = 0</div>
-            <div class="equation equation-3">∇ × E = -∂B/∂t</div>
-            <div class="equation equation-4">∑(n=1→∞) 1/n² = π²/6</div>
-          </div>
-        </div>
-
-        <div class="scenarios-container">
-          <h2 class="scenarios-title">Manage Scenarios</h2>
-
-          <div class="scenarios-content-card glass-card">
-            <div class="scenario-section">
+        <q-card class="buddy-overlap-card scenarios-content-card">
+          <q-card-section class="scenario-section">
               <h3 class="section-title">Active Scenario</h3>
               <p class="section-description">Select a scenario to display on the calendar</p>
 
@@ -60,17 +60,26 @@
                 </div>
               </div>
 
-              <q-btn
-                label="Create New Scenario"
-                icon="add"
-                class="create-scenario-btn"
-                @click="handleCreateScenario"
-                unelevated
-                no-caps
-              />
-            </div>
-          </div>
-        </div>
+              <div class="scenario-actions">
+                <q-btn
+                  label="Create New Scenario"
+                  icon="add"
+                  class="create-scenario-btn"
+                  @click="handleCreateScenario"
+                  unelevated
+                  no-caps
+                />
+                <q-btn
+                  label="Compare Scenarios"
+                  icon="compare_arrows"
+                  class="compare-scenario-btn"
+                  @click="goToCompareScenarios"
+                  outline
+                  no-caps
+                />
+              </div>
+            </q-card-section>
+          </q-card>
       </div>
 
       <!-- Transaction View -->
@@ -384,6 +393,8 @@ import { useCalendarStore } from '../stores/calendar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
+import { useProfileStore } from '../stores/profile'
+import AppHeader from '../components/AppHeader.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -392,6 +403,24 @@ const calendarStore = useCalendarStore()
 const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
 const constantsStore = useConstantsStore()
+const profileStore = useProfileStore()
+
+// Buddy "Budget" header (green): PLAN = scenario manager, INSIGHTS = compare.
+function profileLabel(profile) {
+  if (!profile) return 'Budget'
+  if (profile.first_name && profile.last_name) {
+    return `${profile.first_name} ${profile.last_name}`
+  }
+  return profile.first_name || profile.last_name || profile.name || 'Budget'
+}
+const budgetTitle = computed(() => profileLabel(profileStore.currentProfile))
+const budgetTabs = [
+  { label: 'Plan', value: 'plan' },
+  { label: 'Insights', value: 'insights', to: '/compare' },
+]
+function goToAddTransaction() {
+  router.push({ path: '/budget', query: { view: 'transaction' } })
+}
 
 const isInitializing = ref(false)
 const isSavingTransaction = ref(false)
@@ -492,6 +521,10 @@ async function handleScenarioSelection(scenario) {
 
 function handleCreateScenario() {
   goToCreateScenarioPage()
+}
+
+function goToCompareScenarios() {
+  router.push('/compare')
 }
 
 function handleCategoryChange(value) {
@@ -926,16 +959,16 @@ watch(
 
 <style scoped lang="scss">
 .calendar-page {
-  padding: 1rem;
+  padding: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--page-bg);
 }
 
 .calendar-container {
-  max-width: 1400px;
+  max-width: 480px;
   margin: 0 auto;
   position: relative;
-  z-index: 1;
+  padding: 0 0.75rem 0.75rem;
 }
 
 .view-header {
@@ -1027,7 +1060,15 @@ watch(
 .scenarios-view {
   padding: 0;
   position: relative;
-  min-height: 100vh;
+}
+
+.scenarios-content-card {
+  width: 100%;
+  margin-bottom: 1rem;
+
+  :deep(.q-card__section) {
+    padding: 1.35rem 1.25rem 1.15rem;
+  }
 }
 
 .background-scene {
@@ -1119,35 +1160,6 @@ watch(
   }
 }
 
-.scenarios-container {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  position: relative;
-  z-index: 2;
-}
-
-.scenarios-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 1.5rem 0 2rem 0;
-  text-align: center;
-  letter-spacing: -0.5px;
-}
-
-.scenarios-content-card {
-  padding: 2rem;
-  background: var(--bg-dark);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  border: 1px solid var(--color-primary-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
 .scenario-section {
   .section-title {
     font-size: 1.2rem;
@@ -1222,6 +1234,12 @@ watch(
   align-items: center;
 }
 
+.scenario-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .create-scenario-btn {
   width: 100%;
   padding: 0.875rem 1.5rem;
@@ -1236,6 +1254,21 @@ watch(
     background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+  }
+}
+
+.compare-scenario-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  color: #c4b5fd;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    color: #ddd6fe;
+    transform: translateY(-2px);
   }
 }
 
@@ -1559,19 +1592,12 @@ watch(
 
 // Tablet and desktop optimizations
 @media (min-width: 1024px) {
-  .calendar-page {
-    padding: clamp(1.5rem, 2vw, 2.5rem);
-  }
-
   // Make container wider on desktop with fluid scaling
   .calendar-container {
     max-width: min(90vw, 1600px);
     width: 100%;
-  }
-
-  .scenarios-container {
-    max-width: min(90vw, 800px);
-    padding: 0 clamp(1.5rem, 2vw, 2.5rem);
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+    padding-bottom: 6rem;
   }
 
   .transaction-container {
@@ -1587,7 +1613,9 @@ watch(
   }
 
   .scenarios-content-card {
-    padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
+    :deep(.q-card__section) {
+      padding: 2rem 2.5rem 1.75rem;
+    }
   }
 
   .transaction-content-card {
@@ -1601,10 +1629,6 @@ watch(
     max-width: min(92vw, 1800px);
   }
 
-  .scenarios-container {
-    max-width: min(92vw, 900px);
-  }
-
   .transaction-container {
     max-width: min(92vw, 900px);
   }
@@ -1616,7 +1640,9 @@ watch(
   }
 
   .scenarios-content-card {
-    padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+    :deep(.q-card__section) {
+      padding: clamp(1.75rem, 2.5vw, 3rem) clamp(2.5rem, 3.5vw, 4rem);
+    }
   }
 
   .transaction-content-card {
@@ -1630,10 +1656,6 @@ watch(
     max-width: min(94vw, 2000px);
   }
 
-  .scenarios-container {
-    max-width: min(94vw, 1000px);
-  }
-
   .transaction-container {
     max-width: min(94vw, 1000px);
   }
@@ -1645,7 +1667,9 @@ watch(
   }
 
   .scenarios-content-card {
-    padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+    :deep(.q-card__section) {
+      padding: clamp(2rem, 2.5vw, 3.5rem) clamp(3rem, 4vw, 5rem);
+    }
   }
 
   .transaction-content-card {
@@ -1654,21 +1678,18 @@ watch(
 }
 
 @media (max-width: 768px) {
-  .calendar-page {
-    padding: 0.5rem;
+  .calendar-container {
+    padding: 0 0.75rem 0.75rem;
   }
 
   .view-title {
     font-size: 1.5rem;
   }
 
-  .scenarios-title {
-    font-size: 2rem;
-    margin: 1rem 0 1.5rem 0;
-  }
-
   .scenarios-content-card {
-    padding: 1.5rem;
+    :deep(.q-card__section) {
+      padding: 1.5rem;
+    }
   }
 
   .calendar-day-cell {

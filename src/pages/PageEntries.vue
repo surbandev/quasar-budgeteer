@@ -1,11 +1,20 @@
 <template>
   <q-page class="entries-page">
+    <AppHeader
+      variant="overview"
+      overlap-content
+      label="Overview"
+      :title="budgetTitle"
+      :tabs="overviewTabs"
+      active-tab="list"
+      gear-to="/tools"
+    />
     <div class="entries-container">
       <!-- Loading State -->
       <q-inner-loading :showing="loading" />
 
       <!-- Month Selector -->
-      <div class="month-selector-card">
+      <div class="month-selector-card buddy-overlap-card">
         <q-btn
           flat
           round
@@ -30,6 +39,7 @@
         />
       </div>
 
+      <template v-if="!loading">
       <!-- Summary Card -->
       <div class="summary-card glass-card">
         <div class="summary-item">
@@ -111,6 +121,7 @@
           <span>No transactions found for this month</span>
         </div>
       </div>
+      </template>
     </div>
   </q-page>
 </template>
@@ -119,7 +130,26 @@
 import { ref, computed, onMounted } from 'vue'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
+import { useProfileStore } from '../stores/profile'
+import { filterEventsForMonth } from '../js/monthEvents'
+import { ensureMonthEvents, syncMonthFromStore } from '../js/ensureMonthEvents'
 import BrandIcon from '../components/BrandIcon.vue'
+import AppHeader from '../components/AppHeader.vue'
+
+const profileStore = useProfileStore()
+function profileLabel(profile) {
+  if (!profile) return 'Budget'
+  if (profile.first_name && profile.last_name) {
+    return `${profile.first_name} ${profile.last_name}`
+  }
+  return profile.first_name || profile.last_name || profile.name || 'Budget'
+}
+const budgetTitle = computed(() => profileLabel(profileStore.currentProfile))
+const overviewTabs = [
+  { label: 'Overview', value: 'overview', to: '/overview' },
+  { label: 'Spending', value: 'spending', to: '/spending' },
+  { label: 'List', value: 'list', to: '/entries' },
+]
 
 const eventsStore = useEventsStore()
 const constantsStore = useConstantsStore()
@@ -129,7 +159,13 @@ const selectedMonth = ref(new Date().getMonth()) // 0-11
 const selectedYear = ref(new Date().getFullYear())
 const showUpcomingOnly = ref(true)
 
-const filteredEvents = computed(() => eventsStore.filteredEvents || [])
+const filteredEvents = computed(() =>
+  filterEventsForMonth(
+    eventsStore.filteredEvents || [],
+    selectedMonth.value,
+    selectedYear.value,
+  ),
+)
 
 const selectedMonthLabel = computed(() => {
   const date = new Date(selectedYear.value, selectedMonth.value, 1)
@@ -311,11 +347,13 @@ async function previousMonth() {
   }
 
   showUpcomingOnly.value = isCurrentMonth.value
-
-  // Update store and fetch data for new month
-  const newDate = new Date(selectedYear.value, selectedMonth.value, 1)
-  eventsStore.setCurrentDate(newDate)
-  await eventsStore.fetchEventsForMonthByScenario()
+  await ensureMonthEvents(eventsStore, {
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    setLoading: (value) => {
+      loading.value = value
+    },
+  })
 }
 
 async function nextMonth() {
@@ -327,50 +365,62 @@ async function nextMonth() {
   }
 
   showUpcomingOnly.value = isCurrentMonth.value
-
-  // Update store and fetch data for new month
-  const newDate = new Date(selectedYear.value, selectedMonth.value, 1)
-  eventsStore.setCurrentDate(newDate)
-  await eventsStore.fetchEventsForMonthByScenario()
+  await ensureMonthEvents(eventsStore, {
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    setLoading: (value) => {
+      loading.value = value
+    },
+  })
 }
 
 onMounted(async () => {
-  loading.value = true
-  // Set the current date in the store to match our selected month/year
-  const currentMonthDate = new Date(selectedYear.value, selectedMonth.value, 1)
-  eventsStore.setCurrentDate(currentMonthDate)
-  // Fetch events for the current month
-  await eventsStore.fetchEventsForMonthByScenario()
-  loading.value = false
+  syncMonthFromStore(eventsStore, selectedMonth, selectedYear)
+  await ensureMonthEvents(eventsStore, {
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    setLoading: (value) => {
+      loading.value = value
+    },
+  })
 })
 </script>
 
 <style scoped lang="scss">
 .entries-page {
-  padding: 1rem;
+  padding: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--page-bg);
   position: relative;
-  padding-bottom: 2rem;
 }
 
 .entries-container {
-  max-width: 1400px;
+  max-width: 480px;
   margin: 0 auto;
   position: relative;
-  z-index: 1;
+  padding: 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--buddy-card-gap);
+
+  > .month-selector-card:first-child {
+    margin-top: var(--buddy-header-overlap-pull);
+    position: relative;
+    z-index: 3;
+  }
+}
+
+:deep(.q-inner-loading) {
+  background: rgba(13, 13, 13, 0.72);
+  border-radius: var(--buddy-card-radius);
 }
 
 .month-selector-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem 1.25rem;
-  background: var(--bg-button);
-  backdrop-filter: blur(10px);
-  border: 2px solid var(--border-secondary);
-  border-radius: 24px;
-  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.15rem;
+  margin-bottom: 0;
 
   .month-nav-btn {
     opacity: 0.8;
@@ -409,12 +459,8 @@ onMounted(async () => {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 1.5rem;
-  background: var(--bg-button);
-  backdrop-filter: blur(10px);
-  border: 2px solid var(--border-secondary);
-  border-radius: 24px;
-  margin-bottom: 1.5rem;
+  padding: 1.35rem 1.15rem;
+  margin-bottom: 0;
 }
 
 .summary-item {
@@ -449,7 +495,7 @@ onMounted(async () => {
 .toggle-row {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .toggle-btn {
@@ -477,20 +523,21 @@ onMounted(async () => {
 .transactions-by-day {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--buddy-card-gap);
 }
 
 .day-group {
   display: flex;
   flex-direction: column;
+  gap: var(--buddy-card-gap);
 }
 
 .day-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.5rem;
+  padding: 0.15rem 0.25rem 0;
+  margin-bottom: 0;
 }
 
 .day-date {
@@ -508,7 +555,7 @@ onMounted(async () => {
 .day-transactions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--buddy-card-gap);
 }
 
 .transaction-item {
@@ -569,22 +616,24 @@ onMounted(async () => {
 }
 
 .no-data {
-  padding: 3rem 1.5rem;
+  padding: 1.5rem;
   text-align: center;
   color: var(--text-muted);
   font-size: 1rem;
+  background: var(--buddy-surface);
+  border: 1px solid var(--buddy-hairline);
+  border-radius: var(--buddy-card-radius);
 }
 
 // Tablet and desktop optimizations
 @media (min-width: 1024px) {
-  .entries-page {
-    padding: clamp(1.5rem, 2vw, 2.5rem);
-  }
-
   // Make container wider on desktop with fluid scaling
   .entries-container {
     max-width: min(90vw, 1600px);
     width: 100%;
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+    padding-bottom: 0;
+    gap: clamp(1rem, 2vw, 1.5rem);
   }
 
   // Make content boxes wider to fill space better with fluid padding
@@ -596,7 +645,6 @@ onMounted(async () => {
 
   .month-selector-card {
     padding: clamp(1.5rem, 2vw, 2rem) clamp(1.25rem, 2.5vw, 2rem);
-    margin-bottom: clamp(1.5rem, 2vw, 2.5rem);
   }
 
   .summary-card {

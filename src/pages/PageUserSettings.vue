@@ -17,6 +17,45 @@
 
       <q-form @submit="saveSettings" class="settings-form">
         <div class="form-section">
+          <h3 class="section-title">Appearance</h3>
+          <p class="appearance-hint">Pick a look for the app — changes apply instantly.</p>
+
+          <div class="theme-grid">
+            <div
+              v-for="theme in themes"
+              :key="theme.id"
+              class="theme-option"
+              :class="{ active: currentThemeId === theme.id }"
+              role="button"
+              tabindex="0"
+              @click="selectTheme(theme.id)"
+              @keyup.enter="selectTheme(theme.id)"
+            >
+              <div class="theme-swatches">
+                <span
+                  v-for="(color, index) in theme.swatch"
+                  :key="index"
+                  class="theme-swatch"
+                  :style="{ background: color }"
+                />
+              </div>
+              <div class="theme-meta">
+                <div class="theme-name">
+                  <span>{{ theme.name }}</span>
+                  <q-icon
+                    v-if="currentThemeId === theme.id"
+                    name="check_circle"
+                    color="positive"
+                    size="18px"
+                  />
+                </div>
+                <div class="theme-desc">{{ theme.description }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
           <h3 class="section-title">Account Information</h3>
 
           <div class="form-group">
@@ -200,14 +239,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 
 const router = useRouter()
 const $q = useQuasar()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
+
+const themes = themeStore.availableThemes
+const currentThemeId = computed(() => themeStore.currentTheme)
+
+function selectTheme(id) {
+  themeStore.setTheme(id)
+}
 
 const isSaving = ref(false)
 const isLoading = ref(false)
@@ -333,6 +381,7 @@ function goBack() {
 }
 
 onMounted(async () => {
+  themeStore.initTheme()
   await loadUserSettings()
 })
 </script>
@@ -355,7 +404,7 @@ onMounted(async () => {
   right: 0;
   bottom: 0;
   z-index: 0;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
 }
 
 .stars {
@@ -562,6 +611,83 @@ onMounted(async () => {
   &:hover {
     color: rgba(255, 255, 255, 0.9);
   }
+}
+
+// Appearance / theme picker styling
+.appearance-hint {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--q-primary, #667eea);
+    outline-offset: 2px;
+  }
+
+  &.active {
+    border-color: var(--q-primary, #667eea);
+    background: rgba(102, 126, 234, 0.15);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  }
+}
+
+.theme-swatches {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.theme-swatch {
+  width: 44px;
+  height: 16px;
+  display: block;
+}
+
+.theme-meta {
+  min-width: 0;
+}
+
+.theme-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.25rem;
+}
+
+.theme-desc {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.35;
 }
 
 // Subscription section styling

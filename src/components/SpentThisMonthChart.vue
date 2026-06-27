@@ -1,78 +1,53 @@
 <template>
-  <q-card class="spent-chart-card glass-card">
+  <q-card class="spent-chart-card buddy-overlap-card">
     <q-card-section>
-      <div class="chart-header">
-        <div class="chart-header-left">
+      <!-- Buddy-style hero: spent + remaining side by side -->
+      <div class="buddy-chart-hero buddy-chart-hero-split">
+        <div class="hero-stat">
           <span class="chart-label">{{ chartLabel }}</span>
           <h2 class="chart-amount">{{ formatCurrency(totalSpent) }}</h2>
         </div>
-        <div class="chart-header-center">
-          <span class="chart-label">AT A GLANCE</span>
-          <div class="glance-actions">
-            <q-btn
-              dense
-              unelevated
-              no-caps
-              :label="currentMonthName"
-              color="primary"
-              :outline="quickRangePreset !== 'month'"
-              @click="emit('selectQuickRange', 'month')"
-            />
-            <q-btn
-              dense
-              unelevated
-              no-caps
-              label="6 months"
-              color="primary"
-              :outline="quickRangePreset !== '6m'"
-              @click="emit('selectQuickRange', '6m')"
-            />
-            <q-btn
-              dense
-              unelevated
-              no-caps
-              label="1 year"
-              color="primary"
-              :outline="quickRangePreset !== '1y'"
-              @click="emit('selectQuickRange', '1y')"
-            />
-          </div>
-        </div>
-        <div class="chart-header-right">
-          <span class="chart-label">{{ expensesLeftLabel }}</span>
-          <h2 class="chart-amount negative">{{ formatCurrency(totalExpensesLeft || 0) }}</h2>
+        <div class="hero-stat hero-stat-right">
+          <span class="chart-label">{{ leftLabel }}</span>
+          <h2 class="chart-amount left-amount">{{ formatCurrency(leftThisMonth) }}</h2>
         </div>
       </div>
 
       <div class="chart-wrapper">
         <Line :data="chartData" :options="chartOptions" />
+        <transition name="chart-fade">
+          <div v-if="loading" class="chart-loading-overlay">
+            <q-spinner-dots color="primary" size="48px" />
+            <span class="chart-loading-text">Loading range…</span>
+          </div>
+        </transition>
       </div>
 
       <div class="chart-legend">
-        <div class="legend-item" v-if="dailyIncome.length > 0">
+        <div class="legend-item">
           <div class="legend-dot purple"></div>
-          <span class="legend-text">Income</span>
+          <span class="legend-text">This period</span>
         </div>
-        <div class="legend-item" v-if="dailyExpenses.length > 0">
-          <div class="legend-dot red"></div>
-          <span class="legend-text">Expenses</span>
+        <div class="legend-item">
+          <div class="legend-dot green"></div>
+          <span class="legend-text">Income</span>
         </div>
       </div>
 
-      <!-- Scenario Section -->
-      <div class="snapshot-section">
-        <div class="snapshot-header">
-          <h3 class="snapshot-title">Scenario's</h3>
-          <div class="snapshot-actions">
+      <!-- Planning-only "Connected Accounts" → active scenario layers -->
+      <div class="scenarios-panel">
+        <div class="scenarios-panel-header">
+          <h3 class="scenarios-panel-title">Active Scenarios</h3>
+          <div class="scenarios-panel-actions">
             <q-btn flat dense round icon="more_horiz" color="white" size="sm">
               <q-menu anchor="bottom right" self="top right" class="scenario-menu" :offset="[0, 8]">
                 <div class="scenario-menu-content">
                   <div class="scenario-menu-header">
                     <q-icon name="layers" size="20px" />
-                    <span class="scenario-menu-title">Scenario Toggles</span>
+                    <span class="scenario-menu-title">Scenario layers</span>
                   </div>
                   <div class="scenario-menu-subtitle">
-                    Combine scenarios to include their events
+                    Combine scenarios to include their planned events
                   </div>
                   <q-separator class="q-my-sm" />
                   <div class="scenarios-list">
@@ -133,6 +108,16 @@
                       <span>No additional scenarios</span>
                     </div>
                   </div>
+                  <q-separator class="q-my-sm" />
+                  <q-btn
+                    flat
+                    no-caps
+                    dense
+                    icon="compare_arrows"
+                    label="Compare scenarios"
+                    class="full-width scenario-compare-link"
+                    @click="goToCompare"
+                  />
                 </div>
               </q-menu>
             </q-btn>
@@ -148,57 +133,26 @@
           </div>
         </div>
 
-        <div class="snapshot-list">
-          <div class="snapshot-item">
-            <span class="snapshot-label">Cash Flow</span>
-            <span class="snapshot-dots"></span>
-            <span class="snapshot-value" :class="monthlyBalance >= 0 ? 'positive' : 'negative'">
-              {{ formatCurrency(monthlyBalance) }}
-            </span>
+        <div class="scenarios-panel-list">
+          <div class="scenario-row">
+            <span class="scenario-row-name">Income</span>
+            <span class="scenario-row-amount positive">{{ formatCurrency(monthlyIncome) }}</span>
           </div>
-
-          <div class="snapshot-item">
-            <span class="snapshot-label">Savings</span>
-            <span class="snapshot-dots"></span>
-            <span class="snapshot-value positive">
-              {{ formatCurrency(monthlySavings) }}
-            </span>
+          <div class="scenario-row">
+            <span class="scenario-row-name">Bills</span>
+            <span class="scenario-row-amount">{{ formatCurrency(monthlyExpenses) }}</span>
           </div>
-
-          <div class="snapshot-item">
-            <span class="snapshot-label">Income</span>
-            <span class="snapshot-dots"></span>
-            <span class="snapshot-value positive">
-              {{ formatCurrency(monthlyIncome) }}
-            </span>
-          </div>
-
-          <div class="snapshot-item">
-            <span class="snapshot-label">Expenses</span>
-            <span class="snapshot-dots"></span>
-            <span class="snapshot-value negative">
-              {{ formatCurrency(monthlyExpenses) }}
+          <div class="scenario-row scenario-row-net">
+            <span class="scenario-row-name">Net</span>
+            <span class="scenario-row-amount" :class="netClass(planNet)">
+              {{ formatSignedCurrency(planNet) }}
             </span>
           </div>
         </div>
 
-        <div class="snapshot-footer">
-          <q-select
-            v-model="selectedProfileId"
-            :options="profileOptions"
-            label="Profile"
-            outlined
-            dense
-            dark
-            emit-value
-            map-options
-            class="profile-select"
-            @update:model-value="onProfileChange"
-          />
-          <div class="snapshot-right-controls">
-            <slot name="rightControls" />
-          </div>
-        </div>
+        <p class="scenarios-panel-footer">
+          {{ activeLayerCount }} layer{{ activeLayerCount === 1 ? '' : 's' }} in this view
+        </p>
       </div>
     </q-card-section>
   </q-card>
@@ -301,58 +255,36 @@ const props = defineProps({
     type: String,
     default: 'month',
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['toggleScenario', 'deleteScenario', 'profileChange', 'selectQuickRange'])
+defineEmits(['toggleScenario', 'deleteScenario'])
 
 const eventsStore = useEventsStore()
 
 // Use store values as single source of truth (override props if store has values)
 const monthlyIncome = computed(() => eventsStore.monthlyIncome || props.monthlyIncome)
 const monthlyExpenses = computed(() => eventsStore.monthlyExpenses || props.monthlyExpenses)
-const monthlySavings = computed(() => eventsStore.monthlySavings || props.monthlySavings)
-const monthlyBalance = computed(() => eventsStore.cashFlow || props.monthlyBalance)
+const leftThisMonth = computed(() => props.totalExpensesLeft || 0)
+const planNet = computed(() => monthlyIncome.value - monthlyExpenses.value)
 
-const selectedProfileId = ref(props.currentProfile?.id || props.currentProfile?._id || null)
-
-const profileOptions = computed(() => {
-  return props.profiles.map((profile) => {
-    const profileName =
-      profile.first_name && profile.last_name
-        ? `${profile.first_name} ${profile.last_name}`
-        : profile.first_name || profile.last_name || profile.name || 'Unnamed Profile'
-    return {
-      label: profileName,
-      value: profile.id || profile._id,
-    }
-  })
-})
-
-function onProfileChange(profileId) {
-  const selectedProfile = props.profiles.find((p) => p.id === profileId || p._id === profileId)
-  if (selectedProfile) {
-    emit('profileChange', selectedProfile)
-  }
-}
-
-// Watch for changes in currentProfile prop
-watch(
-  () => props.currentProfile,
-  (newProfile) => {
-    if (newProfile) {
-      const newProfileId = newProfile.id || newProfile._id
-      if (newProfileId !== selectedProfileId.value) {
-        selectedProfileId.value = newProfileId
-      }
-    }
-  },
-  { immediate: true },
+// Scenarios currently layered on top of the base plan (menu only).
+const activeLayerScenarios = computed(() =>
+  props.availableScenarios.filter((s) => props.activeScenarios.has(s.id)),
 )
+const activeLayerCount = computed(() => 1 + activeLayerScenarios.value.length)
 
 const router = useRouter()
 
 function goToScenarios() {
   router.push({ name: 'CreateScenario' })
+}
+
+function goToCompare() {
+  router.push('/compare')
 }
 
 // Calculate if date range is more than a month
@@ -372,19 +304,108 @@ const chartLabel = computed(() => {
   return isMoreThanMonth.value ? 'SPENT IN THIS TERM' : 'SPENT THIS MONTH'
 })
 
-const expensesLeftLabel = computed(() => {
-  return isMoreThanMonth.value
-    ? 'TOTAL EXPENSES THIS TERM'
-    : 'TOTAL EXPENSES LEFT THIS MONTH'
+const leftLabel = computed(() => {
+  return isMoreThanMonth.value ? 'LEFT THIS TERM' : 'LEFT THIS MONTH'
 })
 
-const currentMonthName = computed(() =>
-  new Date().toLocaleString('default', { month: 'long' }),
+function netClass(value) {
+  if (value > 0) return 'positive'
+  if (value < 0) return 'negative'
+  return ''
+}
+
+function formatSignedCurrency(amount) {
+  const value = Number(amount) || 0
+  const formatted = Math.abs(value).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  if (value < 0) return `-$${formatted}`
+  return `$${formatted}`
+}
+
+const cumulativeSpending = computed(() => {
+  const daily = props.dailyExpenses.length > 0 ? props.dailyExpenses : props.spentData
+  if (!daily.length) return []
+
+  let sum = 0
+  const cumulative = daily.map((amount) => {
+    sum += amount || 0
+    return sum
+  })
+
+  const target = monthlyExpenses.value
+  const finalValue = cumulative[cumulative.length - 1] || 0
+  if (target > 0 && finalValue > 0 && Math.abs(finalValue - target) > 0.01) {
+    const ratio = target / finalValue
+    return cumulative.map((val) => Math.round(val * ratio * 100) / 100)
+  }
+  return cumulative
+})
+
+const cumulativeIncome = computed(() => {
+  const daily = props.dailyIncome
+  if (!daily.length) return []
+
+  let sum = 0
+  const cumulative = daily.map((amount) => {
+    sum += amount || 0
+    return sum
+  })
+
+  const target = monthlyIncome.value
+  const finalValue = cumulative[cumulative.length - 1] || 0
+  if (target > 0 && finalValue > 0 && Math.abs(finalValue - target) > 0.01) {
+    const ratio = target / finalValue
+    return cumulative.map((val) => Math.round(val * ratio * 100) / 100)
+  }
+  return cumulative
+})
+
+function buildIncomeLineFallback(pointCount) {
+  if (pointCount <= 0) return []
+  const total = monthlyIncome.value || 0
+  if (pointCount === 1) return [total]
+  return Array.from({ length: pointCount }, (_, i) =>
+    Math.round((total / (pointCount - 1)) * i * 100) / 100,
+  )
+}
+
+const dailyBillAmounts = computed(() =>
+  props.dailyExpenses.length > 0 ? props.dailyExpenses : props.spentData,
 )
 
-const shouldUseProgressiveAnimation = computed(() => {
-  return props.quickRangePreset === '6m' || props.quickRangePreset === '1y'
+// Index of the last day in the range that has a planned bill/debit.
+const lastBillDayIndex = computed(() => {
+  const daily = dailyBillAmounts.value
+  for (let i = daily.length - 1; i >= 0; i--) {
+    if ((daily[i] || 0) > 0) return i
+  }
+  return -1
 })
+
+function shouldShowXTick(index, labels) {
+  if (index < 0 || index >= labels.length) return false
+  if (index === lastBillDayIndex.value) return true
+
+  if (props.isOneYearView && labels.length > 0) {
+    const label = String(labels[index] || '')
+    const dayToken = label.split(' ')[1]
+    const day = Number(dayToken)
+    if (day === 1 || index === labels.length - 1) return true
+    return false
+  }
+
+  if (labels.length <= 7) return true
+
+  const step = Math.ceil(labels.length / 7)
+  return index % step === 0 || index === labels.length - 1
+}
+
+// Progressive reveal is disabled: the chart now renders the full series instantly
+// for every range (including 6m / 1y) so the home page never feels like it is
+// slowly "drawing in".
+const shouldUseProgressiveAnimation = computed(() => false)
 
 const animatedPointCount = ref(0)
 const progressiveFrameId = ref(null)
@@ -439,8 +460,10 @@ function startProgressiveReveal() {
 
   animatedPointCount.value = 1
 
-  // requestAnimationFrame + time-based progress: updates every frame, no multi-point jumps
-  const totalDurationMs = Math.min(9000, Math.max(2800, totalPoints * 22))
+  // requestAnimationFrame + time-based progress: updates every frame, no multi-point jumps.
+  // Kept short so the left-to-right draw reads as a quick flourish, not a multi-second
+  // wait (previously up to 9s for the 1-year view).
+  const totalDurationMs = Math.min(900, Math.max(450, totalPoints * 4))
   const startTime = performance.now()
 
   function revealFrame(now) {
@@ -538,120 +561,12 @@ const dateLabels = computed(() => {
 })
 
 watch(
-  [dateLabels, shouldUseProgressiveAnimation, () => props.dailyIncome.length, () => props.dailyExpenses.length],
+  [dateLabels, () => cumulativeSpending.value.length],
   () => {
     scheduleProgressiveReveal()
   },
   { immediate: true },
 )
-
-// Calculate daily income amounts (for positive area)
-const dailyIncomeAmounts = computed(() => {
-  return props.dailyIncome.length > 0 ? props.dailyIncome : []
-})
-
-// Calculate daily expense amounts (for negative area)
-const dailyExpenseAmounts = computed(() => {
-  return props.dailyExpenses.length > 0 ? props.dailyExpenses : []
-})
-
-// Calculate cumulative cash flow (income - expenses over time)
-const cumulativeCashFlow = computed(() => {
-  const incomeData = dailyIncomeAmounts.value
-  const expensesData = dailyExpenseAmounts.value
-  const days = Math.max(incomeData.length, expensesData.length)
-  
-  if (days === 0) return []
-  
-  let cumulative = []
-  let balance = 0
-  
-  for (let i = 0; i < days; i++) {
-    const income = incomeData[i] || 0
-    const expense = expensesData[i] || 0
-    balance += income - expense
-    cumulative.push(balance)
-  }
-  
-  // Always normalize to match monthlyBalance (from store or props) if available
-  if (cumulative.length === 0) return []
-  
-  const finalValue = cumulative[cumulative.length - 1] || 0
-  const targetBalance = monthlyBalance.value
-  
-  // Always normalize if we have a target balance and the values don't match
-  if (targetBalance !== 0 && finalValue !== 0 && Math.abs(finalValue - targetBalance) > 0.001) {
-    // Normalize to match monthly balance exactly
-    const ratio = targetBalance / finalValue
-    cumulative = cumulative.map((val) => {
-      const normalized = val * ratio
-      // Round to 2 decimal places for precision
-      return Math.round(normalized * 100) / 100
-    })
-    // Ensure the last value is exactly the target (fix any rounding errors)
-    if (cumulative.length > 0) {
-      cumulative[cumulative.length - 1] = targetBalance
-    }
-  }
-  
-  return cumulative
-})
-
-// Calculate cumulative income (for purple area above zero line)
-const cumulativeIncome = computed(() => {
-  const incomeData = dailyIncomeAmounts.value
-
-  if (incomeData.length === 0) return []
-
-  let cumulative = []
-  let sum = 0
-
-  // Use only the actual income data length
-  for (let i = 0; i < incomeData.length; i++) {
-    const income = incomeData[i] || 0
-    sum += income
-    cumulative.push(sum)
-  }
-
-  // Ensure the final value matches monthlyIncome (from store or props)
-  const finalValue = cumulative[cumulative.length - 1] || 0
-  const targetIncome = monthlyIncome.value
-  if (targetIncome > 0 && Math.abs(finalValue - targetIncome) > 0.01) {
-    // Normalize to match monthly total
-    const ratio = targetIncome / finalValue
-    cumulative = cumulative.map((val) => val * ratio)
-  }
-
-  return cumulative
-})
-
-// Calculate cumulative expenses (for red area overlapping with income)
-const cumulativeExpenses = computed(() => {
-  const expensesData = dailyExpenseAmounts.value
-
-  if (expensesData.length === 0) return []
-
-  let cumulative = []
-  let sum = 0
-
-  // Use only the actual expenses data length
-  for (let i = 0; i < expensesData.length; i++) {
-    const expense = expensesData[i] || 0
-    sum += expense
-    cumulative.push(sum) // Positive to overlap with income
-  }
-
-  // Ensure the final value matches monthlyExpenses (from store or props)
-  const finalValue = cumulative[cumulative.length - 1] || 0
-  const targetExpenses = monthlyExpenses.value
-  if (targetExpenses > 0 && Math.abs(finalValue - targetExpenses) > 0.01) {
-    // Normalize to match monthly total
-    const ratio = targetExpenses / finalValue
-    cumulative = cumulative.map((val) => val * ratio)
-  }
-
-  return cumulative
-})
 
 // Generate mock data if none provided
 function generateMockData() {
@@ -664,149 +579,80 @@ function generateMockData() {
 }
 
 const chartData = computed(() => {
-  const hasIncomeData = props.dailyIncome.length > 0
-  const hasExpensesData = props.dailyExpenses.length > 0
+  const spending =
+    cumulativeSpending.value.length > 0
+      ? cumulativeSpending.value
+      : (() => {
+          const data = props.spentData.length > 0 ? props.spentData : generateMockData()
+          let sum = 0
+          return data.map((amount) => {
+            sum += amount
+            return sum
+          })
+        })()
 
-  const datasets = []
+  const income =
+    cumulativeIncome.value.length === spending.length
+      ? cumulativeIncome.value
+      : buildIncomeLineFallback(spending.length)
 
-  // If we have income/expense data, show overlapping cash flow visualization
-  if (hasIncomeData || hasExpensesData) {
-    // Get the maximum length to ensure all arrays are aligned
-    const maxLength = Math.max(
-      cumulativeIncome.value.length,
-      cumulativeExpenses.value.length,
-      cumulativeCashFlow.value.length,
-      dateLabels.value.length,
-    )
-
-    // Pad arrays to maxLength to ensure alignment
-    const padArray = (arr, length, fillValue) => {
-      if (arr.length >= length) return arr.slice(0, length)
-      return [...arr, ...new Array(length - arr.length).fill(fillValue)]
-    }
-
-    const incomeData = padArray(cumulativeIncome.value, maxLength, cumulativeIncome.value[cumulativeIncome.value.length - 1] || 0)
-    const expensesData = padArray(cumulativeExpenses.value, maxLength, cumulativeExpenses.value[cumulativeExpenses.value.length - 1] || 0)
-    const cashFlowData = padArray(cumulativeCashFlow.value, maxLength, cumulativeCashFlow.value[cumulativeCashFlow.value.length - 1] || 0)
-
-    // Income dataset (purple, cumulative from zero, trending up)
-    if (hasIncomeData) {
-      datasets.push({
-        label: 'Income',
-        data: incomeData,
-        borderColor: '#a855f7',
-        backgroundColor: (context) => {
-          const ctx = context.chart.ctx
-          const chart = context.chart
-          const gradient = ctx.createLinearGradient(
-            0,
-            chart.chartArea.top,
-            0,
-            chart.chartArea.bottom,
-          )
-          gradient.addColorStop(0, 'rgba(168, 85, 247, 0.6)')
-          gradient.addColorStop(0.5, 'rgba(147, 51, 234, 0.4)')
-          gradient.addColorStop(1, 'rgba(126, 34, 206, 0.2)')
-          return gradient
-        },
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: '#a855f7',
-        pointHoverBorderColor: '#ffffff',
-        pointHoverBorderWidth: 2,
-        tension: 0.4,
-        cubicInterpolationMode: 'monotone',
-        fill: true,
-        order: 1, // Draw first (behind expenses)
-      })
-    }
-
-    // Expenses dataset (red, cumulative from zero, overlapping with income)
-    if (hasExpensesData) {
-      datasets.push({
-        label: 'Expenses',
-        data: expensesData,
-        borderColor: '#ef4444',
-        backgroundColor: (context) => {
-          const ctx = context.chart.ctx
-          const chart = context.chart
-          const gradient = ctx.createLinearGradient(
-            0,
-            chart.chartArea.top,
-            0,
-            chart.chartArea.bottom,
-          )
-          gradient.addColorStop(0, 'rgba(239, 68, 68, 0.6)')
-          gradient.addColorStop(0.5, 'rgba(220, 38, 38, 0.4)')
-          gradient.addColorStop(1, 'rgba(185, 28, 28, 0.2)')
-          return gradient
-        },
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: '#ef4444',
-        pointHoverBorderColor: '#ffffff',
-        pointHoverBorderWidth: 2,
-        tension: 0.4,
-        cubicInterpolationMode: 'monotone',
-        fill: true,
-        order: 2, // Draw on top of income (creates overlap)
-      })
-    }
-    
-    // Cash flow line (white line showing net balance over time)
-    if (hasIncomeData || hasExpensesData) {
-      datasets.push({
-        label: 'Cash Flow',
-        data: cashFlowData,
-        borderColor: '#ffffff',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: '#ffffff',
-        pointHoverBorderColor: '#a855f7',
-        pointHoverBorderWidth: 2,
-        tension: 0.4,
-        cubicInterpolationMode: 'monotone',
-        fill: false,
-        order: 3, // Draw on top of everything
-      })
-    }
-  } else {
-    // Fallback to old behavior if no income/expense data
-    const data = props.spentData.length > 0 ? props.spentData : generateMockData()
-    let cumulative = []
-    let sum = 0
-    data.forEach((amount) => {
-      sum += amount
-      cumulative.push(sum)
-    })
-
-    datasets.push({
+  const datasets = [
+    {
+      label: 'Income',
+      data: income,
+      borderColor: 'transparent',
+      borderWidth: 0,
+      backgroundColor: (context) => {
+        const ctx = context.chart.ctx
+        const chart = context.chart
+        const gradient = ctx.createLinearGradient(
+          0,
+          chart.chartArea?.top ?? 0,
+          0,
+          chart.chartArea?.bottom ?? 300,
+        )
+        gradient.addColorStop(0, 'rgba(74, 222, 128, 0.2)')
+        gradient.addColorStop(0.55, 'rgba(74, 222, 128, 0.09)')
+        gradient.addColorStop(1, 'rgba(74, 222, 128, 0)')
+        return gradient
+      },
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      tension: 0.42,
+      cubicInterpolationMode: 'monotone',
+      fill: true,
+      order: 0,
+    },
+    {
       label: 'This period',
-      data: cumulative,
+      data: spending,
       borderColor: '#a855f7',
       backgroundColor: (context) => {
         const ctx = context.chart.ctx
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300)
-        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.3)')
-        gradient.addColorStop(0.5, 'rgba(147, 51, 234, 0.15)')
-        gradient.addColorStop(1, 'rgba(126, 34, 206, 0.05)')
+        const chart = context.chart
+        const gradient = ctx.createLinearGradient(
+          0,
+          chart.chartArea?.top ?? 0,
+          0,
+          chart.chartArea?.bottom ?? 300,
+        )
+        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.28)')
+        gradient.addColorStop(0.55, 'rgba(147, 51, 234, 0.1)')
+        gradient.addColorStop(1, 'rgba(126, 34, 206, 0)')
         return gradient
       },
-      borderWidth: 3,
+      borderWidth: 2.5,
       pointRadius: 0,
-      pointHoverRadius: 6,
+      pointHoverRadius: 5,
       pointHoverBackgroundColor: '#a855f7',
       pointHoverBorderColor: '#ffffff',
       pointHoverBorderWidth: 2,
-      tension: 0.4,
+      tension: 0.42,
       cubicInterpolationMode: 'monotone',
       fill: true,
-    })
-  }
+      order: 2,
+    },
+  ]
 
   const totalLabelCount = dateLabels.value.length
   const visiblePointCount = shouldUseProgressiveAnimation.value
@@ -825,16 +671,11 @@ const chartData = computed(() => {
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  // Data is preloaded/cached before the chart mounts, so a single short entrance
+  // animation reads as a polished flourish rather than a sluggish "draw-in".
   animation: {
-    duration: shouldUseProgressiveAnimation.value ? 0 : 900,
-    easing: shouldUseProgressiveAnimation.value ? 'linear' : 'easeOutQuart',
-  },
-  transitions: {
-    active: {
-      animation: {
-        duration: 450,
-      },
-    },
+    duration: 700,
+    easing: 'easeOutQuart',
   },
   interaction: {
     mode: 'index',
@@ -884,51 +725,16 @@ const chartOptions = computed(() => ({
         autoSkip: true,
         maxTicksLimit: 7,
         callback: function (value, index) {
-          // Show every nth label based on data length to avoid crowding
           const labels = dateLabels.value
-          if (props.isOneYearView && labels.length > 0) {
-            const label = String(labels[index] || '')
-            const dayToken = label.split(' ')[1]
-            const day = Number(dayToken)
-            if (day === 1 || index === labels.length - 1) {
-              return labels[index] || ''
-            }
-            return ''
-          }
-          if (labels.length <= 7) {
-            return labels[index] || ''
-          }
-          const step = Math.ceil(labels.length / 7) // Show approximately 7 labels
-          if (index % step === 0 || index === labels.length - 1) {
-            return labels[index] || ''
-          }
-          return ''
+          return shouldShowXTick(index, labels) ? labels[index] || '' : ''
         },
       },
     },
     y: {
-      display: true,
+      display: false,
       beginAtZero: true,
       min: 0,
-      grace: 0,
-      afterBuildTicks: (scale) => {
-        scale.ticks = scale.ticks.filter((tick) => tick.value >= 0)
-      },
-      grid: {
-        display: true,
-        color: 'rgba(255, 255, 255, 0.1)',
-        drawBorder: false,
-        lineWidth: 1,
-      },
-      ticks: {
-        color: 'rgba(255, 255, 255, 0.5)',
-        font: {
-          size: 11,
-        },
-        callback: function (value) {
-          return '$' + value.toLocaleString()
-        },
-      },
+      grace: '5%',
     },
   },
 }))
@@ -945,48 +751,127 @@ function formatCurrency(amount) {
 
 <style scoped lang="scss">
 .spent-chart-card {
-  background: rgba(40, 40, 45, 0.95) !important;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  margin-bottom: 1.5rem;
-
   :deep(.q-card__section) {
-    padding: 1.5rem 1.5rem 1.25rem;
+    padding: 1.35rem 1.25rem 1.15rem;
   }
 }
 
-.chart-header {
+.buddy-chart-hero {
+  margin-bottom: 0.5rem;
+}
+
+.buddy-chart-hero-split {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
   gap: 1rem;
 }
 
-.chart-header-left,
-.chart-header-right {
+.hero-stat {
+  flex: 1;
+  min-width: 0;
+
+  &.hero-stat-right {
+    text-align: right;
+  }
+}
+
+.scenario-row-net {
+  margin-top: 0.15rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--buddy-hairline);
+}
+
+.scenario-row-amount {
+  color: var(--buddy-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+
+  &.positive {
+    color: #4ade80;
+  }
+
+  &.negative {
+    color: #f87171;
+  }
+}
+
+.chart-amount {
+  color: white;
+  font-size: 2.75rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+  line-height: 1;
+  letter-spacing: -1.5px;
+
+  &.left-amount {
+    color: #f87171;
+  }
+}
+
+@media (max-width: 380px) {
+  .chart-amount {
+    font-size: 2.15rem;
+  }
+}
+
+.scenarios-panel {
+  margin-top: 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--buddy-hairline);
+}
+
+.scenarios-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.scenarios-panel-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--buddy-text);
+}
+
+.scenarios-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.scenarios-panel-list {
   display: flex;
   flex-direction: column;
+  gap: 0.65rem;
 }
 
-.chart-header-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-}
-
-.glance-actions {
+.scenario-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.chart-header-right {
-  align-items: flex-end;
-  text-align: right;
+.scenario-row-name {
+  color: var(--buddy-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.scenario-row-tag {
+  color: var(--buddy-text-dim);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scenarios-panel-footer {
+  margin: 0.85rem 0 0;
+  color: var(--buddy-text-faint);
+  font-size: 0.78rem;
 }
 
 .chart-label {
@@ -999,63 +884,84 @@ function formatCurrency(amount) {
   margin-bottom: 0.25rem;
 }
 
-.chart-amount {
-  color: white;
-  font-size: 2.75rem;
-  font-weight: 700;
-  margin: 0;
-  line-height: 1;
-  letter-spacing: -1px;
-
-  &.negative {
-    color: var(--color-negative);
-  }
-}
-
 .chart-wrapper {
-  height: 180px;
-  margin: 1rem 0 0.75rem;
+  height: 200px;
+  margin: 0.65rem -0.15rem 0.5rem;
   position: relative;
 }
 
 .chart-legend {
   display: flex;
-  gap: 1.5rem;
-  justify-content: flex-start;
-  padding: 0.5rem 0;
+  gap: 1.25rem;
+  justify-content: center;
+  padding: 0.35rem 0 0;
+}
+
+.chart-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: rgba(13, 13, 13, 0.55);
+  backdrop-filter: blur(2px);
+  border-radius: 12px;
+  z-index: 2;
+}
+
+.chart-loading-text {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+}
+
+.chart-fade-enter-active,
+.chart-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.chart-fade-enter-from,
+.chart-fade-leave-to {
+  opacity: 0;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  padding: 0.35rem 0 0;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 
   &.purple {
     background: #a855f7;
   }
 
-  &.gray {
-    background: rgba(156, 163, 175, 0.5);
-  }
-
-  &.red {
-    background: #ef4444;
+  &.green {
+    background: rgba(74, 222, 128, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.45);
   }
 }
 
 .legend-text {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.75rem;
   font-weight: 400;
 }
 
-// Snapshot Section
+// Snapshot Section (legacy styles kept for menu)
 .snapshot-section {
   margin-top: 1.5rem;
   padding-top: 1.25rem;

@@ -233,6 +233,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
+import { useOverviewStore } from '../stores/overview'
 import { useProfileStore } from '../stores/profile'
 import { useConstantsStore } from '../stores/constants'
 import { useCalendarStore } from '../stores/calendar'
@@ -244,6 +245,7 @@ const route = useRoute()
 const $q = useQuasar()
 const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
+const overviewStore = useOverviewStore()
 const profileStore = useProfileStore()
 const constantsStore = useConstantsStore()
 const calendarStore = useCalendarStore()
@@ -459,6 +461,9 @@ async function saveEvent() {
       showSuccessCheckmark()
     }
 
+    // The plan changed, so the cached Home view is stale.
+    overviewStore.invalidate()
+
     router.back()
   } catch (error) {
     console.error('Error saving event:', error)
@@ -491,6 +496,9 @@ async function removeEvent() {
       // Delete the event
       await eventsStore.deleteEvent(eventId)
 
+      // The plan changed, so the cached Home view is stale.
+      overviewStore.invalidate()
+
       // Update calendar days to reflect the deletion
       try {
         calendarStore.updateCalendarDays()
@@ -511,13 +519,13 @@ async function removeEvent() {
         if (router.currentRoute.value.path === '/transaction') {
           router.back()
         } else {
-          // If we can't go back, navigate to calendar
-          router.push('/budget?view=calendar')
+          // If we can't go back, return to Overview (the calendar now lives there)
+          router.push('/overview')
         }
       } catch (navError) {
         console.error('Navigation error:', navError)
         // Fallback navigation
-        router.push('/calendar?view=calendar')
+        router.push('/overview')
       }
     } catch (error) {
       console.error('Error deleting event:', error)

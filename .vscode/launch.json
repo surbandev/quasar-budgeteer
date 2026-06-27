@@ -30,13 +30,49 @@
 
     {
 
-      "name": "Run Tests",
+      "name": "Run Vitest",
 
       "type": "node-terminal",
 
       "request": "launch",
 
-      "command": "npm run test:run"
+      "command": "npx vitest run"
+
+    },
+
+    {
+
+      "name": "Run E2E",
+
+      "type": "node-terminal",
+
+      "request": "launch",
+
+      "command": "npm run test:e2e"
+
+    },
+
+    {
+
+      "name": "Run on iOS (device/simulator, macOS)",
+
+      "type": "node-terminal",
+
+      "request": "launch",
+
+      "command": "npm run ios:run"
+
+    },
+
+    {
+
+      "name": "Build iOS + open Xcode (macOS)",
+
+      "type": "node-terminal",
+
+      "request": "launch",
+
+      "command": "npm run ios:build"
 
     },
 

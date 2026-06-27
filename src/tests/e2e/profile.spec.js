@@ -1,11 +1,18 @@
 import { test, expect } from '@playwright/test'
 
+// Credentials come from the environment so the real password is never committed.
+// Set E2E_PASSWORD (and optionally E2E_USERNAME) before running the e2e suite.
+const E2E_USERNAME = process.env.E2E_USERNAME ?? 'surban'
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? ''
+
 test.describe('Profile Management', () => {
   test('sign in and add a new profile', async ({ page }) => {
+    test.skip(!E2E_PASSWORD, 'Set E2E_PASSWORD to run the sign-in e2e test')
+
     await page.goto('/login')
 
-    await page.locator('input[placeholder="Enter username"]').fill('surban')
-    await page.locator('input[placeholder="Enter password"]').fill('tacos')
+    await page.locator('input[placeholder="Enter username"]').fill(E2E_USERNAME)
+    await page.locator('input[placeholder="Enter password"]').fill(E2E_PASSWORD)
     await page.getByRole('button', { name: 'LOGIN' }).click()
 
     await page.waitForURL('**/overview')

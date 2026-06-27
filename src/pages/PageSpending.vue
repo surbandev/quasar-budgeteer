@@ -1,11 +1,20 @@
 <template>
   <q-page class="spending-page">
+    <AppHeader
+      variant="overview"
+      overlap-content
+      label="Overview"
+      :title="budgetTitle"
+      :tabs="overviewTabs"
+      active-tab="spending"
+      gear-to="/tools"
+    />
     <div class="spending-container">
       <!-- Loading State -->
       <q-inner-loading :showing="loading" />
 
-      <!-- Month Selector - Full Width -->
-      <div class="month-selector-card">
+      <!-- Month Selector -->
+      <div class="month-selector-card buddy-overlap-card">
         <q-btn
           flat
           round
@@ -30,137 +39,125 @@
         />
       </div>
 
-      <!-- Chart and Categories in Same Box -->
-      <q-card class="chart-and-categories-card glass-card">
+      <!-- Pie chart card -->
+      <q-card v-show="!loading" class="spending-chart-card glass-card">
         <q-card-section>
-          <div class="chart-and-categories-layout">
-            <!-- Left: Pie Chart -->
-            <div class="chart-section">
-              <div class="chart-header">
-                <q-btn
-                  :label="transactionType === 'DEBIT' ? 'EXPENSES' : 'INCOME'"
-                  icon-right="expand_more"
-                  class="type-toggle-btn-small"
-                  unelevated
-                  no-caps
-                  size="sm"
-                  dense
-                >
-                  <q-menu anchor="bottom left" self="top left">
-                    <q-list class="type-menu">
-                      <q-item
-                        clickable
-                        v-close-popup
-                        @click="transactionType = 'DEBIT'"
-                        class="type-menu-item"
-                      >
-                        <q-item-section>
-                          <q-item-label>Expenses</q-item-label>
-                        </q-item-section>
-                        <q-item-section side v-if="transactionType === 'DEBIT'">
-                          <q-icon name="check" color="primary" />
-                        </q-item-section>
-                      </q-item>
-                      <q-item
-                        clickable
-                        v-close-popup
-                        @click="transactionType = 'CREDIT'"
-                        class="type-menu-item"
-                      >
-                        <q-item-section>
-                          <q-item-label>Income</q-item-label>
-                        </q-item-section>
-                        <q-item-section side v-if="transactionType === 'CREDIT'">
-                          <q-icon name="check" color="primary" />
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-                </q-btn>
-              </div>
-              <div class="chart-container">
-                <Pie :data="categoriesData" :options="chartOptions" />
-              </div>
-            </div>
-
-            <!-- Right: Categories List -->
-            <div class="categories-section">
-              <div class="category-list-container">
-                <div v-for="category in categoryBreakdown" :key="category.name">
-                  <!-- Category Header -->
-                  <div
-                    class="category-list-item"
-                    :class="{ expanded: expandedCategories.has(category.name) }"
-                    @click="toggleCategory(category.name)"
+          <div class="chart-header">
+            <q-btn
+              :label="transactionType === 'DEBIT' ? 'EXPENSES' : 'INCOME'"
+              icon-right="expand_more"
+              class="type-toggle-btn-small"
+              unelevated
+              no-caps
+              size="sm"
+              dense
+            >
+              <q-menu anchor="bottom left" self="top left">
+                <q-list class="type-menu">
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="transactionType = 'DEBIT'"
+                    class="type-menu-item"
                   >
-                    <div class="category-left">
-                      <div
-                        class="category-color-dot"
-                        :style="{ backgroundColor: category.color }"
-                      ></div>
-                      <span class="category-name-text">{{ category.name }}</span>
-                    </div>
-                    <div class="category-right">
-                      <span class="category-amount-text">{{
-                        formatCurrency(category.amount)
-                      }}</span>
-                      <q-icon
-                        name="expand_more"
-                        size="20px"
-                        color="rgba(255, 255, 255, 0.5)"
-                        :class="{ 'rotate-icon': expandedCategories.has(category.name) }"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Expanded Transactions -->
-                  <div v-if="expandedCategories.has(category.name)" class="category-transactions">
-                    <div
-                      v-for="transaction in getCategoryTransactions(category.name)"
-                      :key="transaction.id || transaction._id"
-                      class="transaction-list-item"
-                      @click.stop="viewTransaction(transaction)"
-                    >
-                      <div class="transaction-left">
-                        <div
-                          class="transaction-icon"
-                          :style="{
-                            backgroundColor: category.color,
-                          }"
-                        >
-                          <BrandIcon
-                            :transaction-name="transaction.name"
-                            :category="transaction.category"
-                            size="18px"
-                            color="white"
-                          />
-                        </div>
-                        <div class="transaction-info">
-                          <span class="transaction-name">{{
-                            transaction.name || 'Unnamed Transaction'
-                          }}</span>
-                          <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
-                        </div>
-                      </div>
-                      <div class="transaction-right">
-                        <span class="transaction-amount negative">
-                          {{ formatCurrency(getEventDisplayAmount(transaction)) }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="categoryBreakdown.length === 0" class="no-data">
-                  <span
-                    >No {{ transactionType === 'DEBIT' ? 'expense' : 'income' }} data available for
-                    the selected period</span
+                    <q-item-section>
+                      <q-item-label>Expenses</q-item-label>
+                    </q-item-section>
+                    <q-item-section side v-if="transactionType === 'DEBIT'">
+                      <q-icon name="check" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="transactionType = 'CREDIT'"
+                    class="type-menu-item"
                   >
-                </div>
-              </div>
-            </div>
+                    <q-item-section>
+                      <q-item-label>Income</q-item-label>
+                    </q-item-section>
+                    <q-item-section side v-if="transactionType === 'CREDIT'">
+                      <q-icon name="check" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
+          </div>
+          <div class="chart-container">
+            <Pie :data="categoriesData" :options="chartOptions" />
           </div>
         </q-card-section>
       </q-card>
+
+      <!-- Category breakdown — separate cards below the chart (Buddy-style) -->
+      <template v-if="!loading">
+        <div v-for="category in categoryBreakdown" :key="category.name" class="category-group">
+          <div
+            class="category-list-item"
+            :class="{ expanded: expandedCategories.has(category.name) }"
+            @click="toggleCategory(category.name)"
+          >
+            <div class="category-left">
+              <div
+                class="category-color-dot"
+                :style="{ backgroundColor: category.color }"
+              ></div>
+              <span class="category-name-text">{{ category.name }}</span>
+            </div>
+            <div class="category-right">
+              <span class="category-amount-text">{{ formatCurrency(category.amount) }}</span>
+              <q-icon
+                name="expand_more"
+                size="20px"
+                color="rgba(255, 255, 255, 0.5)"
+                :class="{ 'rotate-icon': expandedCategories.has(category.name) }"
+              />
+            </div>
+          </div>
+
+          <div v-if="expandedCategories.has(category.name)" class="category-transactions">
+            <div
+              v-for="transaction in getCategoryTransactions(category.name)"
+              :key="transaction.id || transaction._id"
+              class="transaction-list-item"
+              @click.stop="viewTransaction(transaction)"
+            >
+              <div class="transaction-left">
+                <div
+                  class="transaction-icon"
+                  :style="{ backgroundColor: category.color }"
+                >
+                  <BrandIcon
+                    :transaction-name="transaction.name"
+                    :category="transaction.category"
+                    size="18px"
+                    color="white"
+                  />
+                </div>
+                <div class="transaction-info">
+                  <span class="transaction-name">{{
+                    transaction.name || 'Unnamed Transaction'
+                  }}</span>
+                  <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
+                </div>
+              </div>
+              <div class="transaction-right">
+                <span class="transaction-amount negative">
+                  {{ formatCurrency(getEventDisplayAmount(transaction)) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="categoryBreakdown.length === 0" class="no-data-card">
+          <span
+            >No {{ transactionType === 'DEBIT' ? 'expense' : 'income' }} data available for the
+            selected period</span
+          >
+        </div>
+      </template>
     </div>
   </q-page>
 </template>
@@ -171,7 +168,26 @@ import { Pie } from 'vue-chartjs'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { useEventsStore } from '../stores/events'
 import { useConstantsStore } from '../stores/constants'
+import { useProfileStore } from '../stores/profile'
+import { filterEventsForMonth } from '../js/monthEvents'
+import { ensureMonthEvents, syncMonthFromStore } from '../js/ensureMonthEvents'
 import BrandIcon from '../components/BrandIcon.vue'
+import AppHeader from '../components/AppHeader.vue'
+
+const profileStore = useProfileStore()
+function profileLabel(profile) {
+  if (!profile) return 'Budget'
+  if (profile.first_name && profile.last_name) {
+    return `${profile.first_name} ${profile.last_name}`
+  }
+  return profile.first_name || profile.last_name || profile.name || 'Budget'
+}
+const budgetTitle = computed(() => profileLabel(profileStore.currentProfile))
+const overviewTabs = [
+  { label: 'Overview', value: 'overview', to: '/overview' },
+  { label: 'Spending', value: 'spending', to: '/spending' },
+  { label: 'List', value: 'list', to: '/entries' },
+]
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -184,8 +200,13 @@ const selectedMonth = ref(new Date().getMonth()) // 0-11
 const selectedYear = ref(new Date().getFullYear())
 const transactionType = ref('DEBIT') // 'DEBIT' for expenses, 'CREDIT' for income
 
-// The store's filteredEvents are already filtered by the selected month
-const filteredEvents = computed(() => eventsStore.filteredEvents || [])
+const filteredEvents = computed(() =>
+  filterEventsForMonth(
+    eventsStore.filteredEvents || [],
+    selectedMonth.value,
+    selectedYear.value,
+  ),
+)
 
 const selectedMonthLabel = computed(() => {
   const date = new Date(selectedYear.value, selectedMonth.value, 1)
@@ -294,6 +315,9 @@ const categoryBreakdown = computed(() => {
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
+  animation: {
+    duration: 0,
+  },
   plugins: {
     legend: {
       position: 'bottom',
@@ -419,13 +443,14 @@ async function previousMonth() {
   } else {
     selectedMonth.value -= 1
   }
-  // Clear expanded categories when changing months
   expandedCategories.value = new Set()
-
-  // Update store and fetch data for new month
-  const newDate = new Date(selectedYear.value, selectedMonth.value, 1)
-  eventsStore.setCurrentDate(newDate)
-  await eventsStore.fetchEventsForMonthByScenario()
+  await ensureMonthEvents(eventsStore, {
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    setLoading: (value) => {
+      loading.value = value
+    },
+  })
 }
 
 async function nextMonth() {
@@ -435,55 +460,64 @@ async function nextMonth() {
   } else {
     selectedMonth.value += 1
   }
-  // Clear expanded categories when changing months
   expandedCategories.value = new Set()
-
-  // Update store and fetch data for new month
-  const newDate = new Date(selectedYear.value, selectedMonth.value, 1)
-  eventsStore.setCurrentDate(newDate)
-  await eventsStore.fetchEventsForMonthByScenario()
+  await ensureMonthEvents(eventsStore, {
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    setLoading: (value) => {
+      loading.value = value
+    },
+  })
 }
 
 onMounted(async () => {
-  loading.value = true
-  // Set the current date in the store to match our selected month/year
-  const currentMonthDate = new Date(selectedYear.value, selectedMonth.value, 1)
-  eventsStore.setCurrentDate(currentMonthDate)
-  // Fetch events for the current month
-  await eventsStore.fetchEventsForMonthByScenario()
-  loading.value = false
+  syncMonthFromStore(eventsStore, selectedMonth, selectedYear)
+  await ensureMonthEvents(eventsStore, {
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    setLoading: (value) => {
+      loading.value = value
+    },
+  })
 })
 </script>
 
 <style scoped lang="scss">
 .spending-page {
-  padding: 1rem;
+  padding: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
   position: relative;
-  padding-bottom: 2rem;
 }
 
 .spending-container {
-  max-width: 1400px;
+  max-width: 480px;
   margin: 0 auto;
   position: relative;
-  z-index: 1;
-}
-
-// Chart and categories in same box layout
-.chart-and-categories-layout {
+  padding: 0 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--buddy-card-gap);
+
+  > .month-selector-card:first-child {
+    margin-top: var(--buddy-header-overlap-pull);
+    position: relative;
+    z-index: 3;
+  }
 }
 
-.chart-section {
-  display: flex;
-  flex-direction: column;
+:deep(.q-inner-loading) {
+  background: rgba(13, 13, 13, 0.72);
+  border-radius: var(--buddy-card-radius);
 }
 
-.categories-section {
+.spending-chart-card {
+  :deep(.q-card__section) {
+    padding: 1.25rem 1.15rem 1.15rem;
+  }
+}
+
+.category-group {
   display: flex;
   flex-direction: column;
 }
@@ -492,12 +526,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem 1.25rem;
-  background: rgba(40, 40, 45, 0.95);
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.15rem;
+  margin-bottom: 0;
 
   .month-nav-btn {
     opacity: 0.8;
@@ -535,7 +565,7 @@ onMounted(async () => {
 .chart-header {
   display: flex;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .type-toggle-btn-small {
@@ -600,15 +630,8 @@ onMounted(async () => {
 }
 
 .chart-container {
-  height: 350px;
+  height: 280px;
   position: relative;
-}
-
-.category-list-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
 }
 
 .category-list-item {
@@ -748,16 +771,20 @@ onMounted(async () => {
   }
 }
 
+.no-data-card,
 .no-data {
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   color: rgba(255, 255, 255, 0.5);
+  background: var(--buddy-surface);
+  border: 1px solid var(--buddy-hairline);
+  border-radius: var(--buddy-card-radius);
 }
 
 // Mobile optimization
 @media (max-width: 600px) {
-  .spending-page {
-    padding: 0.75rem;
+  .spending-container {
+    padding: 0 0.75rem;
   }
 
   .chart-card {
@@ -773,7 +800,7 @@ onMounted(async () => {
   }
 
   .chart-container {
-    height: 300px;
+    height: 260px;
   }
 
   .view-toggle {
@@ -811,40 +838,14 @@ onMounted(async () => {
 
 // Tablet and desktop optimizations
 @media (min-width: 1024px) {
-  .spending-page {
-    padding: clamp(1.5rem, 2vw, 2.5rem);
-  }
-
-  // Make container wider on desktop with fluid scaling
   .spending-container {
     max-width: min(90vw, 1600px);
     width: 100%;
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+    padding-bottom: 0;
+    gap: clamp(1rem, 2vw, 1.5rem);
   }
 
-  // Chart and categories side by side in same box
-  .chart-and-categories-layout {
-    display: grid;
-    grid-template-columns: 0.9fr 1.4fr;
-    gap: 2.5rem;
-    align-items: start;
-  }
-
-  .chart-section {
-    position: sticky;
-    top: 2rem;
-    padding-right: 1rem;
-  }
-
-  .categories-section {
-    padding-left: 1rem;
-  }
-
-  .category-list-container {
-    margin-top: 0;
-    gap: 1rem;
-  }
-
-  // Make content boxes wider to fill space better with fluid padding
   .glass-card {
     :deep(.q-card__section) {
       padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3vw, 3rem);
@@ -853,11 +854,10 @@ onMounted(async () => {
 
   .month-selector-card {
     padding: clamp(1.5rem, 2vw, 2rem) clamp(1.25rem, 2.5vw, 2rem);
-    margin-bottom: clamp(1.5rem, 2vw, 2.5rem);
   }
 
   .chart-container {
-    height: 400px;
+    height: 360px;
   }
 }
 

@@ -1,6 +1,7 @@
 import { boot } from 'quasar/wrappers'
 import { useAuthStore } from 'stores/auth'
 import { getAPIURL } from '../js/api'
+import { isTokenExpired } from '../js/session'
 
 /**
  * Validate the stored token against the server before the app mounts.
@@ -14,6 +15,12 @@ export default boot(async () => {
 
   try {
     if (!authStore.isAuthenticated) return
+
+    // Provably-expired token: drop it immediately, no need to ask the server.
+    if (isTokenExpired(authStore.getToken)) {
+      authStore.logout()
+      return
+    }
 
     try {
       const response = await fetch(

@@ -343,7 +343,7 @@ onMounted(async () => {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
 }
 
 .math-equations {

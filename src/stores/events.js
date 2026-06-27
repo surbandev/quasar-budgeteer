@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { useScenariosStore } from './scenarios'
 import { getAPIURL } from '../js/api'
+import { summarizeEvents } from '../js/scenarioSummary'
 
 export const useEventsStore = defineStore('events', () => {
   // State
@@ -14,6 +15,12 @@ export const useEventsStore = defineStore('events', () => {
   const error = ref(null)
   const profile = ref(null)
   const currentDate = ref(new Date())
+  const monthSnapshot = ref({
+    profileId: null,
+    scenarioId: null,
+    month: null,
+    year: null,
+  })
 
   // Getters
   const allEvents = computed(() => events.value || [])
@@ -184,18 +191,58 @@ export const useEventsStore = defineStore('events', () => {
     }
   }
 
-  async function fetchEventsForMonthByScenario() {
+  function invalidateMonthSnapshot() {
+    monthSnapshot.value = {
+      profileId: null,
+      scenarioId: null,
+      month: null,
+      year: null,
+    }
+  }
+
+  function markMonthSnapshot(date = currentDate.value) {
+    if (!(date instanceof Date) || !profile.value?.id || !selectedScenario.value?.id) {
+      return
+    }
+
+    monthSnapshot.value = {
+      profileId: profile.value.id,
+      scenarioId: selectedScenario.value.id,
+      month: date.getMonth(),
+      year: date.getFullYear(),
+    }
+  }
+
+  function isMonthSnapshotFresh(date = currentDate.value) {
+    if (!(date instanceof Date) || !profile.value?.id || !selectedScenario.value?.id) {
+      return false
+    }
+
+    const snapshot = monthSnapshot.value
+    return (
+      String(snapshot.profileId) === String(profile.value.id) &&
+      String(snapshot.scenarioId) === String(selectedScenario.value.id) &&
+      snapshot.month === date.getMonth() &&
+      snapshot.year === date.getFullYear()
+    )
+  }
+
+  async function fetchEventsForMonthByScenario({ force = false } = {}) {
     if (!selectedScenario.value?.id || !profile.value?.id) {
       console.error('No scenario or profile set for fetching monthly events')
       return
     }
 
-    loading.value = true
-    error.value = null
-
     if (!currentDate.value) {
       setCurrentDate(new Date())
     }
+
+    if (!force && isMonthSnapshotFresh()) {
+      return
+    }
+
+    loading.value = true
+    error.value = null
 
     try {
       const month = Number(currentDate.value.getMonth())
@@ -213,6 +260,7 @@ export const useEventsStore = defineStore('events', () => {
       eventsByMonth.value = response.data
 
       convertMonthlyEventsToFiltered()
+      markMonthSnapshot()
     } catch (err) {
       console.error('Error fetching events for month by scenario:', err)
       error.value = err.message || 'Failed to fetch monthly events'
@@ -412,7 +460,7 @@ export const useEventsStore = defineStore('events', () => {
       const response = await axios.post(url, payload)
 
       await fetchEvents()
-      await fetchEventsForMonthByScenario()
+      await fetchEventsForMonthByScenario({ force: true })
 
       return response.data
     } catch (err) {
@@ -462,7 +510,7 @@ export const useEventsStore = defineStore('events', () => {
       const response = await axios.put(url, payload)
 
       await fetchEvents()
-      await fetchEventsForMonthByScenario()
+      await fetchEventsForMonthByScenario({ force: true })
 
       return response.data
     } catch (err) {
@@ -518,7 +566,7 @@ export const useEventsStore = defineStore('events', () => {
       }
 
       await fetchEvents()
-      await fetchEventsForMonthByScenario()
+      await fetchEventsForMonthByScenario({ force: true })
     } catch (err) {
       console.error('Error deleting event:', err)
       error.value = err.message || 'Failed to delete event'
@@ -624,6 +672,7 @@ export const useEventsStore = defineStore('events', () => {
     combinedActiveEvents.value = []
     loading.value = false
     error.value = null
+    invalidateMonthSnapshot()
   }
 
   function resetForNewUser() {
@@ -758,6 +807,14 @@ export const useEventsStore = defineStore('events', () => {
     return allEvents
   }
 
+  // Summarize a single scenario's planned events over a date range into
+  // income / expenses / savings / net buckets. Reuses the same fetch +
+  // occurrence + display-amount path as the Overview so numbers stay in sync.
+  async function summarizeScenarioForRange(scenarioId, startDate, endDate) {
+    const evts = await getAllActiveScenarioEvents([scenarioId], startDate, endDate)
+    return summarizeEvents(evts)
+  }
+
   async function calculateLoanDetails(loanData) {
     loading.value = true
     error.value = null
@@ -808,6 +865,9 @@ export const useEventsStore = defineStore('events', () => {
     setCurrentDate,
     fetchEvents,
     fetchEventsForMonthByScenario,
+    isMonthSnapshotFresh,
+    invalidateMonthSnapshot,
+    markMonthSnapshot,
     fetchEventsForDateRange,
     convertMonthlyEventsToFiltered,
     filterEventsByDateRange,
@@ -820,6 +880,7 @@ export const useEventsStore = defineStore('events', () => {
     clearError,
     setFilteredEvents,
     getAllActiveScenarioEvents,
+    summarizeScenarioForRange,
     calculateLoanDetails,
   }
 })

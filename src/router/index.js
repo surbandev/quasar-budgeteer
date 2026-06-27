@@ -7,6 +7,8 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
+import { useOverviewStore } from 'stores/overview'
+import { registerRouter, isTokenExpired } from '../js/session'
 import routes from './routes'
 
 /*
@@ -35,9 +37,24 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
 
+  // Let non-component code (axios interceptors, boot files) navigate safely.
+  registerRouter(Router)
+
   // Navigation guard for authentication
   Router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
+
+    // Catch a stale token on EVERY navigation, with no network call: if the JWT
+    // is provably expired, tear the session down so the user can never land on a
+    // protected page (e.g. a cached Home) with a dead session.
+    if (authStore.isAuthenticated && isTokenExpired(authStore.getToken)) {
+      authStore.logout()
+      try {
+        useOverviewStore().clear()
+      } catch {
+        /* overview cache is best-effort */
+      }
+    }
 
     if (!authStore.authChecked) {
       await new Promise((resolve) => {

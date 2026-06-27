@@ -1,5 +1,19 @@
 <template>
   <q-page class="overview-page">
+    <AppHeader
+      variant="overview"
+      overlap-content
+      label="Overview"
+      :title="budgetTitle"
+      title-dropdown
+      :tabs="overviewTabs"
+      active-tab="overview"
+      gear-to="/tools"
+      right-icon="add"
+      right-label="Add transaction"
+      @title="openBudgetPicker"
+      @right="goToAddTransactionPage"
+    />
     <div class="overview-container">
       <!-- Loading State -->
       <q-inner-loading :showing="loading" />
@@ -24,189 +38,42 @@
         :endDate="endDate"
         :isOneYearView="isOneYearView"
         :quickRangePreset="quickRangePreset"
+        :loading="chartLoading"
         @toggleScenario="toggleScenario"
         @deleteScenario="deleteScenario"
-        @profileChange="handleProfileChange"
-        @selectQuickRange="handleQuickRangeSelection"
-      >
-        <template #rightControls>
-          <div class="date-range-filters in-chart">
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
-                <div class="text-subtitle2 q-mb-sm">Start Date</div>
-                <div class="row q-col-gutter-sm">
-                  <div class="col-4">
-                    <q-select
-                      v-model="startMonth"
-                      :options="monthOptions"
-                      option-label="label"
-                      option-value="value"
-                      emit-value
-                      map-options
-                      display-value=""
-                      label="Month"
-                      outlined
-                      dense
-                      dark
-                      @update:model-value="onDateFilterChange"
-                    >
-                      <template v-slot:selected>
-                        <span v-if="startMonth">
-                          {{
-                            monthOptions.find((m) => m.value === startMonth)?.label || startMonth
-                          }}
-                        </span>
-                      </template>
-                    </q-select>
-                  </div>
-                  <div class="col-4">
-                    <q-select
-                      v-model="startDay"
-                      :options="availableDays"
-                      label="Day"
-                      outlined
-                      dense
-                      dark
-                      @update:model-value="onDateFilterChange"
-                    />
-                  </div>
-                  <div class="col-4">
-                    <q-select
-                      v-model="startYear"
-                      :options="years"
-                      label="Year"
-                      outlined
-                      dense
-                      dark
-                      @update:model-value="onDateFilterChange"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <div class="text-subtitle2 q-mb-sm">End Date</div>
-                <div class="row q-col-gutter-sm">
-                  <div class="col-4">
-                    <q-select
-                      v-model="endMonth"
-                      :options="monthOptions"
-                      option-label="label"
-                      option-value="value"
-                      emit-value
-                      map-options
-                      display-value=""
-                      label="Month"
-                      outlined
-                      dense
-                      dark
-                      @update:model-value="onDateFilterChange"
-                    >
-                      <template v-slot:selected>
-                        <span v-if="endMonth">
-                          {{ monthOptions.find((m) => m.value === endMonth)?.label || endMonth }}
-                        </span>
-                      </template>
-                    </q-select>
-                  </div>
-                  <div class="col-4">
-                    <q-select
-                      v-model="endDay"
-                      :options="availableEndDays"
-                      label="Day"
-                      outlined
-                      dense
-                      dark
-                      @update:model-value="onDateFilterChange"
-                    />
-                  </div>
-                  <div class="col-4">
-                    <q-select
-                      v-model="endYear"
-                      :options="years"
-                      label="Year"
-                      outlined
-                      dense
-                      dark
-                      @update:model-value="onDateFilterChange"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
-      </SpentThisMonthChart>
+      />
 
-      <q-card class="glass-card q-mb-lg">
-        <q-card-section>
-          <div class="view-header">
-            <div class="view-header-top">
-              <h2 class="view-title">Calendar</h2>
-              <button class="add-transaction-link" @click="goToAddTransactionPage">
-                <span class="add-icon">+</span>
-                <span>Add Transaction</span>
-              </button>
-            </div>
-            <div class="calendar-header-controls">
-              <q-btn flat dense round icon="chevron_left" @click="handlePreviousMonth" color="white" />
-              <h3 class="month-title">{{ currentMonthYear }}</h3>
-              <q-btn flat dense round icon="chevron_right" @click="handleNextMonth" color="white" />
-            </div>
-          </div>
-
-          <div class="cash-flow-summary-inline q-mb-lg">
-            <div class="cash-flow-item">
-              <span class="flow-label">Cash Flow IN</span>
-              <span class="flow-amount positive">${{ calendarDaysCreditTotal.toFixed(2) }}</span>
-            </div>
-            <div class="cash-flow-item">
-              <span class="flow-label">Cash Flow OUT</span>
-              <span class="flow-amount negative">${{ calendarDaysDebitTotal.toFixed(2) }}</span>
-            </div>
-            <div class="cash-flow-item">
-              <span class="flow-label">Net Flow</span>
-              <span class="flow-amount" :class="calendarNetFlow >= 0 ? 'positive' : 'negative'">
-                ${{ calendarNetFlow.toFixed(2) }}
-              </span>
-            </div>
-          </div>
-
-          <div class="calendar-grid-wrapper">
-            <div class="calendar-grid">
-              <div v-for="day in daysOfWeek" :key="day" class="calendar-day-header">
-                {{ day }}
-              </div>
-              <div
-                v-for="date in overviewCalendarDays"
-                :key="`${date.date.getTime()}-${date.currentMonth ? 'current' : 'other'}`"
-                class="calendar-day-cell"
-                :class="{
-                  'current-month': date.currentMonth,
-                  'has-events': date.hasEvents,
-                  today: date.isToday,
-                }"
-              >
-                <div class="day-number">{{ date.day }}</div>
-                <div v-if="date.events && date.events.length > 0" class="event-details">
-                  <div
-                    v-for="(event, index) in date.events"
-                    :key="index"
-                    class="event-item"
-                    :class="event.type === 'CREDIT' ? 'positive' : 'negative'"
-                    @click.stop="goToEditTransaction(event)"
-                  >
-                    <div class="event-name">{{ event.name }}</div>
-                    <div class="event-amount">${{ getEventDisplayAmount(event).toFixed(2) }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <q-card class="glass-card buddy-mini-calendar-card">
+        <q-card-section class="buddy-mini-calendar-section">
+          <MiniMonthCalendar
+            :calendar-days="overviewCalendarDays"
+            :selected-date="selectedCalendarDay"
+            @select="onCalendarDaySelect"
+          />
+          <div class="calendar-month-bar">
+            <button type="button" class="float-bar-btn" aria-label="Previous month" @click="handlePreviousMonth">
+              <q-icon name="chevron_left" size="22px" />
+            </button>
+            <button type="button" class="float-bar-label" @click="openRangePicker">
+              {{ floatBarLabel }}
+              <q-icon name="expand_more" size="18px" class="float-bar-caret" />
+            </button>
+            <button type="button" class="float-bar-btn" aria-label="Next month" @click="handleNextMonth">
+              <q-icon name="chevron_right" size="22px" />
+            </button>
           </div>
         </q-card-section>
       </q-card>
 
-      <UpcomingTransactions :calendar-days="overviewCalendarDays" />
+      <UpcomingTransactions :calendar-days="overviewCalendarDays" @edit="goToEditTransaction" />
     </div>
+
+    <DayEventsSheet
+      v-model="dayEventsSheetOpen"
+      :date="dayEventsSheetDate"
+      :events="dayEventsSheetEvents"
+      @edit="goToEditTransaction"
+    />
   </q-page>
 </template>
 
@@ -218,9 +85,13 @@ import { useProfileStore } from '../stores/profile'
 import { useCalendarStore } from '../stores/calendar'
 import { useScenariosStore } from '../stores/scenarios'
 import { useEventsStore } from '../stores/events'
-import { useConstantsStore } from '../stores/constants'
+import { useOverviewStore } from '../stores/overview'
+import { aggregateDailyTotals } from '../js/dailyTotals'
 import SpentThisMonthChart from '../components/SpentThisMonthChart.vue'
 import UpcomingTransactions from '../components/UpcomingTransactions.vue'
+import MiniMonthCalendar from '../components/MiniMonthCalendar.vue'
+import DayEventsSheet from '../components/DayEventsSheet.vue'
+import AppHeader from '../components/AppHeader.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -228,9 +99,10 @@ const profileStore = useProfileStore()
 const calendarStore = useCalendarStore()
 const scenariosStore = useScenariosStore()
 const eventsStore = useEventsStore()
-const constantsStore = useConstantsStore()
+const overviewStore = useOverviewStore()
 
 const loading = ref(false)
+const chartLoading = ref(false)
 const activeScenarios = ref(new Set(['default']))
 const combinedActiveEvents = ref([])
 const startMonth = ref(null)
@@ -243,19 +115,63 @@ const dailySpendingData = ref([])
 const dailyIncomeData = ref([])
 const dailyExpensesData = ref([])
 const currentCalendarDate = ref(new Date())
+const selectedCalendarDay = ref(null)
+const dayEventsSheetOpen = ref(false)
+const dayEventsSheetDate = ref(null)
+const dayEventsSheetEvents = ref([])
 const isOneYearView = ref(false)
 const quickRangePreset = ref('month')
 
 /** Dedupes parallel/duplicate fetches when refs + @update handlers both fire */
 let lastFetchedRangeKey = ''
 
-const monthOptions = computed(() => constantsStore.getMonths)
-const years = computed(() => constantsStore.getYears())
-const daysOfWeek = computed(() => constantsStore.getDaysOfWeek)
+function onCalendarDaySelect(day) {
+  if (!day?.currentMonth) return
+  const d = day.date instanceof Date ? day.date : new Date(day.date)
+  selectedCalendarDay.value = d
+
+  if (!day.events?.length) return
+
+  dayEventsSheetDate.value = d
+  dayEventsSheetEvents.value = day.events
+  dayEventsSheetOpen.value = true
+}
 
 const currentProfile = computed(() => profileStore.currentProfile)
 const selectedScenario = computed(() => scenariosStore.selectedScenario)
 const allProfiles = computed(() => profileStore.profiles || [])
+
+// Buddy header bits: the budget/profile title + the OVERVIEW/SPENDING/LIST tabs.
+function profileLabel(profile) {
+  if (!profile) return 'Budget'
+  if (profile.first_name && profile.last_name) {
+    return `${profile.first_name} ${profile.last_name}`
+  }
+  return profile.first_name || profile.last_name || profile.name || 'Budget'
+}
+const budgetTitle = computed(() => profileLabel(currentProfile.value))
+const overviewTabs = [
+  { label: 'Overview', value: 'overview', to: '/overview' },
+  { label: 'Spending', value: 'spending', to: '/spending' },
+  { label: 'List', value: 'list', to: '/entries' },
+]
+
+function openBudgetPicker() {
+  const profiles = allProfiles.value
+  if (!profiles.length) return
+  $q.bottomSheet({
+    title: 'Switch budget',
+    dark: true,
+    grid: false,
+    actions: profiles.map((p) => ({
+      label: profileLabel(p),
+      id: String(p.id || p._id),
+    })),
+  }).onOk((action) => {
+    const picked = profiles.find((p) => String(p.id || p._id) === action.id)
+    if (picked) handleProfileChange(picked)
+  })
+}
 const customScenarios = computed(() => scenariosStore.customScenarios)
 const filteredEvents = computed(() => eventsStore.filteredEvents)
 
@@ -264,6 +180,26 @@ const effectiveProfileId = computed(() => eventsStore.profile?.id ?? currentProf
 const currentMonthYear = computed(() =>
   currentCalendarDate.value.toLocaleString('default', { month: 'long', year: 'numeric' }),
 )
+
+const floatBarLabel = computed(() => {
+  if (quickRangePreset.value === '6m') return 'Last 6 months'
+  if (quickRangePreset.value === '1y') return 'Last 12 months'
+  return currentMonthYear.value
+})
+
+function openRangePicker() {
+  $q.bottomSheet({
+    title: 'Date range',
+    dark: true,
+    actions: [
+      { label: 'This month', id: 'month' },
+      { label: '6 months', id: '6m' },
+      { label: '1 year', id: '1y' },
+    ],
+  }).onOk((action) => {
+    handleQuickRangeSelection(action.id)
+  })
+}
 
 function getEventDisplayAmount(event) {
   if (!event) return 0
@@ -298,8 +234,10 @@ const overviewCalendarDays = computed(() => {
       .filter((event) => event?.date === dayDateStr)
       .map((event) => ({
         id: event.id || event._id,
+        _id: event._id,
         name: event.name,
-        amount: getEventDisplayAmount(event),
+        description: event.description,
+        amount: event.amount,
         type: event.type,
         category: event.category,
         monthly_payment: event.monthly_payment,
@@ -356,50 +294,6 @@ const overviewCalendarDays = computed(() => {
   }
 
   return days
-})
-
-const calendarDaysDebitTotal = computed(() =>
-  overviewCalendarDays.value.reduce((total, day) => {
-    if (!day.currentMonth || !day.events?.length) return total
-    return (
-      total +
-      day.events.reduce(
-        (dayTotal, event) =>
-          event.type === 'DEBIT' ? dayTotal + getEventDisplayAmount(event) : dayTotal,
-        0,
-      )
-    )
-  }, 0),
-)
-
-const calendarDaysCreditTotal = computed(() =>
-  overviewCalendarDays.value.reduce((total, day) => {
-    if (!day.currentMonth || !day.events?.length) return total
-    return (
-      total +
-      day.events.reduce(
-        (dayTotal, event) =>
-          event.type === 'CREDIT' ? dayTotal + getEventDisplayAmount(event) : dayTotal,
-        0,
-      )
-    )
-  }, 0),
-)
-
-const calendarNetFlow = computed(() => calendarDaysCreditTotal.value - calendarDaysDebitTotal.value)
-
-const availableDays = computed(() => {
-  const month = startMonth.value !== null ? startMonth.value - 1 : new Date().getMonth()
-  const year = startYear.value !== null ? startYear.value : new Date().getFullYear()
-  const lastDay = new Date(year, month + 1, 0).getDate()
-  return Array.from({ length: lastDay }, (_, i) => i + 1)
-})
-
-const availableEndDays = computed(() => {
-  const month = endMonth.value !== null ? endMonth.value - 1 : new Date().getMonth()
-  const year = endYear.value !== null ? endYear.value : new Date().getFullYear()
-  const lastDay = new Date(year, month + 1, 0).getDate()
-  return Array.from({ length: lastDay }, (_, i) => i + 1)
 })
 
 // Use store values as single source of truth
@@ -636,12 +530,6 @@ async function handleQuickRangeSelection(rangeKey) {
   await applyQuickRange(1)
 }
 
-async function onDateFilterChange() {
-  isOneYearView.value = false
-  quickRangePreset.value = 'custom'
-  await updateFilteredData()
-}
-
 function hasDateRangeFilter() {
   return (
     startMonth.value !== null &&
@@ -671,6 +559,7 @@ async function applyVisibleCalendarMonthToDataRange() {
 }
 
 async function handlePreviousMonth() {
+  selectedCalendarDay.value = null
   currentCalendarDate.value = new Date(
     currentCalendarDate.value.getFullYear(),
     currentCalendarDate.value.getMonth() - 1,
@@ -680,6 +569,7 @@ async function handlePreviousMonth() {
 }
 
 async function handleNextMonth() {
+  selectedCalendarDay.value = null
   currentCalendarDate.value = new Date(
     currentCalendarDate.value.getFullYear(),
     currentCalendarDate.value.getMonth() + 1,
@@ -728,14 +618,23 @@ async function updateFilteredData() {
   start.setHours(0, 0, 0, 0)
   const end = new Date(endYearNum, endMonthNum - 1, endDayNum)
   end.setHours(0, 0, 0, 0)
-  await eventsStore.fetchEventsForDateRange(start, end)
-  await updateScenarioData()
+
+  // Multi-month ranges (6M / 1Y) fan out into several sequential fetches, so show
+  // a spinner over the chart while the new range loads.
+  chartLoading.value = true
+  try {
+    await eventsStore.fetchEventsForDateRange(start, end)
+    await updateScenarioData()
+  } finally {
+    chartLoading.value = false
+  }
 }
 
 async function updateScenarioData() {
   combinedActiveEvents.value = await getAllActiveScenarioEvents()
   eventsStore.setFilteredEvents(combinedActiveEvents.value)
   calculateDailySpending()
+  cacheCurrentState()
 }
 
 function calculateDailySpending() {
@@ -764,67 +663,72 @@ function calculateDailySpending() {
     end = new Date(year, month + 1, 0)
   }
 
-  // Ensure dates are set to midnight to avoid timezone issues
-  start.setHours(0, 0, 0, 0)
-  start.setMinutes(0, 0, 0)
-  start.setSeconds(0, 0)
-  start.setMilliseconds(0)
-  end.setHours(0, 0, 0, 0)
-  end.setMinutes(0, 0, 0)
-  end.setSeconds(0, 0)
-  end.setMilliseconds(0)
-
-  // Calculate number of days in the range
-  const timeDiff = end.getTime() - start.getTime()
-  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1
-
-  // Initialize daily arrays for the entire range
-  const dailySpending = new Array(daysDiff).fill(0)
-  const dailyIncome = new Array(daysDiff).fill(0)
-  const dailyExpenses = new Array(daysDiff).fill(0)
-
-  // Aggregate income and expenses by day across the entire date range
-  eventsToUse.forEach((event) => {
-    if (!event.date) return
-
-    // Parse date properly to avoid UTC timezone issues (same fix as PageEntries)
-    let eventDate
-    if (typeof event.date === 'string' && event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Parse YYYY-MM-DD as local date (not UTC)
-      const [year, month, day] = event.date.split('-').map(Number)
-      eventDate = new Date(year, month - 1, day)
-    } else {
-      eventDate = new Date(event.date)
-    }
-
-    eventDate.setHours(0, 0, 0, 0)
-    eventDate.setMinutes(0, 0, 0)
-    eventDate.setSeconds(0, 0)
-    eventDate.setMilliseconds(0)
-
-    // Check if event is within the date range
-    if (eventDate >= start && eventDate <= end) {
-      // Calculate which day index this event falls on
-      const dayIndex = Math.floor((eventDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-      if (dayIndex >= 0 && dayIndex < daysDiff) {
-        const amount = getEventDisplayAmount(event)
-
-        if (event.type === 'CREDIT') {
-          // Income
-          dailyIncome[dayIndex] += amount
-          dailySpending[dayIndex] += amount // Keep for backward compatibility
-        } else if (event.type === 'DEBIT' && event.category !== 'SAVINGS') {
-          // Expenses (excluding savings)
-          dailyExpenses[dayIndex] += amount
-          dailySpending[dayIndex] += amount // Keep for backward compatibility
-        }
-      }
-    }
-  })
+  // Shared aggregation (single source of truth with the preload cache).
+  const { dailySpending, dailyIncome, dailyExpenses } = aggregateDailyTotals(eventsToUse, start, end)
 
   dailySpendingData.value = dailySpending
   dailyIncomeData.value = dailyIncome
   dailyExpensesData.value = dailyExpenses
+}
+
+// Persist the current rendered state into the session cache so returning to Home
+// is instant.
+function cacheCurrentState() {
+  if (!currentProfile.value?.id) return
+  overviewStore.save({
+    profileId: currentProfile.value.id,
+    combinedActiveEvents: combinedActiveEvents.value,
+    dailyIncome: dailyIncomeData.value,
+    dailyExpenses: dailyExpensesData.value,
+    dailySpending: dailySpendingData.value,
+    range: {
+      startMonth: startMonth.value,
+      startDay: startDay.value,
+      startYear: startYear.value,
+      endMonth: endMonth.value,
+      endDay: endDay.value,
+      endYear: endYear.value,
+    },
+    quickRangePreset: quickRangePreset.value,
+    isOneYearView: isOneYearView.value,
+    activeScenarios: Array.from(activeScenarios.value),
+  })
+}
+
+// Restore component state from the session cache without any network calls.
+function hydrateFromCache() {
+  combinedActiveEvents.value = overviewStore.combinedActiveEvents
+  dailySpendingData.value = overviewStore.dailySpending
+  dailyIncomeData.value = overviewStore.dailyIncome
+  dailyExpensesData.value = overviewStore.dailyExpenses
+
+  if (overviewStore.range) {
+    startMonth.value = overviewStore.range.startMonth
+    startDay.value = overviewStore.range.startDay
+    startYear.value = overviewStore.range.startYear
+    endMonth.value = overviewStore.range.endMonth
+    endDay.value = overviewStore.range.endDay
+    endYear.value = overviewStore.range.endYear
+  }
+
+  quickRangePreset.value = overviewStore.quickRangePreset
+  isOneYearView.value = overviewStore.isOneYearView
+  activeScenarios.value = new Set(overviewStore.activeScenarios)
+
+  eventsStore.setFilteredEvents(overviewStore.combinedActiveEvents)
+
+  // Keep the fetch dedupe key in sync so a later identical range update no-ops.
+  const profileId = currentProfile.value?.id || ''
+  const scenarioKey = [...activeScenarios.value].sort().join(',')
+  lastFetchedRangeKey = `${profileId}|${scenarioKey}|${startYear.value}-${startMonth.value}-${startDay.value}|${endYear.value}-${endMonth.value}-${endDay.value}`
+}
+
+// Make sure the supporting stores point at the active profile (cheap, idempotent).
+function ensureStoresHaveProfile() {
+  if (!currentProfile.value) return
+  calendarStore.setProfile(currentProfile.value)
+  scenariosStore.setProfile(currentProfile.value)
+  eventsStore.setProfile(currentProfile.value)
 }
 
 async function getAllActiveScenarioEvents() {
@@ -952,12 +856,30 @@ async function initializeOverview() {
       return
     }
 
+    // Fast path: the session cache is already warm for the active profile
+    // (preloaded at login or left over from an earlier Home visit). Render
+    // instantly with zero network calls.
+    if (currentProfile.value?.id && overviewStore.isFreshFor(currentProfile.value.id)) {
+      ensureStoresHaveProfile()
+      hydrateFromCache()
+      loading.value = false
+      return
+    }
+
     loading.value = true
 
     const resolvedProfile = await profileStore.resolveInitialProfile()
 
     if (!resolvedProfile) {
       router.push('/login')
+      return
+    }
+
+    // The preload may have warmed the cache for this profile before we resolved it.
+    if (overviewStore.isFreshFor(resolvedProfile.id)) {
+      ensureStoresHaveProfile()
+      hydrateFromCache()
+      loading.value = false
       return
     }
 
@@ -1019,28 +941,87 @@ watch(currentProfile, async (newProfile) => {
 
 <style scoped lang="scss">
 .overview-page {
-  padding: 1rem;
+  padding: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  background: var(--page-bg);
   position: relative;
-  padding-bottom: 2rem;
 }
 
 .overview-container {
-  max-width: 1400px;
+  max-width: 480px;
   margin: 0 auto;
   position: relative;
-  z-index: 1;
+  padding: 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--buddy-card-gap);
 }
 
-// Match spacing below chart to spacing above
+// Overlap pull lives on .buddy-overlap-card inside the chart component.
 .spent-chart-wrapper {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+}
+
+.buddy-mini-calendar-card {
+  margin-bottom: 0;
+
+  .buddy-mini-calendar-section {
+    padding: 0.85rem 0.65rem 0.65rem !important;
+  }
+}
+
+.calendar-month-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.5rem;
+  background: var(--buddy-surface-inset);
+  border: 1px solid var(--buddy-hairline);
+  border-radius: 999px;
+}
+
+.float-bar-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.float-bar-label {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.float-bar-caret {
+  opacity: 0.7;
 }
 
 // Mobile optimization
 @media (max-width: 600px) {
-  .overview-page {
+  .overview-container {
     padding: 0.75rem;
   }
 }
@@ -1137,6 +1118,27 @@ watch(currentProfile, async (newProfile) => {
     font-weight: 500;
     margin-bottom: 0.75rem;
     font-size: 0.95rem;
+  }
+}
+
+// Collapsible "Custom date range" wrapper keeps the explicit date pickers tucked
+// away by default so the Overview stays compact (quick-range presets remain in the
+// chart header). Users expand it only when they need a custom range.
+.date-range-expansion {
+  max-width: 860px;
+  margin: 0 auto;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+
+  :deep(.date-range-expansion-header) {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    min-height: 44px;
+  }
+
+  :deep(.q-expansion-item__toggle-icon),
+  :deep(.q-item__section--avatar .q-icon) {
+    color: rgba(255, 255, 255, 0.7);
   }
 }
 
@@ -1712,19 +1714,12 @@ watch(currentProfile, async (newProfile) => {
 
 // Tablet and desktop optimizations
 @media (min-width: 1024px) {
-  .overview-page {
-    padding: clamp(1.5rem, 2vw, 2.5rem);
-  }
-
-  // Match spacing below chart to spacing above on desktop
-  .spent-chart-wrapper {
-    margin-bottom: clamp(1.5rem, 2vw, 2.5rem);
-  }
-
-  // Make container wider on desktop with fluid scaling
   .overview-container {
     max-width: min(90vw, 1600px);
     width: 100%;
+    padding: clamp(1.5rem, 2vw, 2.5rem);
+    padding-bottom: 0;
+    gap: clamp(1rem, 2vw, 1.5rem);
   }
 
   // Make date range filters wider on desktop
@@ -1772,8 +1767,8 @@ watch(currentProfile, async (newProfile) => {
 }
 
 @media (max-width: 768px) {
-  .overview-page {
-    padding: 1rem;
+  .overview-container {
+    padding: 0 0.75rem;
   }
 
   .view-title {
