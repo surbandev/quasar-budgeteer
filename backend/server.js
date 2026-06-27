@@ -22,7 +22,20 @@ const feedbackRoutes = require('./routes/feedback')
 
 const prod = process.env.PRODUCTION === 'true'
 const port = Number(process.env.PORT) || 3000
-const distDir = path.join(__dirname, '..', 'dist', 'spa')
+
+function resolveDistDir() {
+  const fs = require('fs')
+  const distRoot = path.join(__dirname, '..', 'dist')
+  for (const sub of ['pwa', 'spa']) {
+    const candidate = path.join(distRoot, sub)
+    if (fs.existsSync(path.join(candidate, 'index.html'))) {
+      return candidate
+    }
+  }
+  return path.join(distRoot, 'spa')
+}
+
+const distDir = resolveDistDir()
 const indexHtml = path.join(distDir, 'index.html')
 
 function createApp({ serveStatic = prod } = {}) {

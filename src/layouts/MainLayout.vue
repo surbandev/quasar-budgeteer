@@ -4,6 +4,8 @@
       <router-view />
     </q-page-container>
 
+    <InstallAppBanner />
+
     <!-- Bottom Navigation (Buddy-style floating pill) -->
     <q-footer class="bottom-nav">
       <nav class="buddy-nav" role="tablist">
@@ -25,8 +27,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Notify } from 'quasar'
+import InstallAppBanner from '../components/InstallAppBanner.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -68,6 +72,31 @@ function goToNav(id) {
     if (route.path !== '/tools') router.push('/tools')
   }
 }
+
+function onPwaUpdated() {
+  Notify.create({
+    message: 'A new version is available.',
+    color: 'primary',
+    timeout: 0,
+    actions: [
+      {
+        label: 'Refresh',
+        color: 'white',
+        handler: () => {
+          window.location.reload()
+        },
+      },
+    ],
+  })
+}
+
+onMounted(() => {
+  window.addEventListener('budgeteer-pwa-updated', onPwaUpdated)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('budgeteer-pwa-updated', onPwaUpdated)
+})
 </script>
 
 <style scoped lang="scss">

@@ -162,15 +162,22 @@ export default defineConfig((ctx) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
-      // swFilename: 'sw.js',
-      // manifestFilename: 'manifest.json',
-      // extendManifestJson (json) {},
-      // useCredentialsForManifestTag: true,
-      // injectPwaMetaTags: false,
-      // extendPWACustomSWConf (esbuildConf) {},
-      // extendGenerateSWOptions (cfg) {},
-      // extendInjectManifestOptions (cfg) {}
+      workboxMode: 'GenerateSW',
+      extendManifestJson(json) {
+        json.name = 'Budgeteer'
+        json.short_name = 'Budgeteer'
+        json.description = 'Personal budgeting and scenario planning'
+        json.display = 'standalone'
+        json.start_url = '/'
+        json.scope = '/'
+        json.background_color = '#0d0d0d'
+        json.theme_color = '#9333ea'
+        json.orientation = 'portrait'
+      },
+      extendGenerateSWOptions(cfg) {
+        cfg.skipWaiting = true
+        cfg.clientsClaim = true
+      },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova
