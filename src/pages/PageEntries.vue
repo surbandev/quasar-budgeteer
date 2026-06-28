@@ -403,6 +403,12 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--buddy-card-gap);
 
+  // Flex gap does not apply after the last card; mirror one card-gap below it so
+  // the space above the nav matches the spacing between cards.
+  > :last-child {
+    margin-bottom: var(--buddy-card-gap);
+  }
+
   > .month-selector-card:first-child {
     margin-top: var(--buddy-header-overlap-pull);
     position: relative;

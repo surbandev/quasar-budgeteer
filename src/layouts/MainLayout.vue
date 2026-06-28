@@ -220,9 +220,7 @@ onUnmounted(() => {
   }
 }
 
-// Reserve space so page content is not hidden behind the fixed pill.
 .main-layout :deep(.q-page-container) {
-  padding-bottom: var(--buddy-scroll-padding-bottom);
   background: var(--page-bg-solid);
 }
 

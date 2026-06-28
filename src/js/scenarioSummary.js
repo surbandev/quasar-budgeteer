@@ -38,8 +38,11 @@ export function summarizeEvents(events) {
 
     if (event.type === 'CREDIT') {
       summary.income += amount
-    } else if (event.category === 'SAVINGS') {
+    } else if (String(event.category || '').toUpperCase() === 'SAVINGS') {
       summary.savings += amount
+      if (event.type === 'DEBIT') {
+        summary.expenses += amount
+      }
     } else if (event.type === 'DEBIT') {
       summary.expenses += amount
     }

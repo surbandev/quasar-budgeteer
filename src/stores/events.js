@@ -120,7 +120,7 @@ export const useEventsStore = defineStore('events', () => {
     if (!Array.isArray(eventsToUse) || eventsToUse.length === 0) return 0
 
     return eventsToUse
-      .filter((event) => event.type === 'DEBIT' && event.category !== 'SAVINGS')
+      .filter((event) => event.type === 'DEBIT')
       .reduce((total, event) => {
         const amount = getEventDisplayAmount(event)
         return total + (isNaN(amount) || !isFinite(amount) ? 0 : amount)
@@ -136,7 +136,7 @@ export const useEventsStore = defineStore('events', () => {
     if (!Array.isArray(eventsToUse) || eventsToUse.length === 0) return 0
 
     return eventsToUse
-      .filter((event) => event.category === 'SAVINGS')
+      .filter((event) => String(event.category || '').toUpperCase() === 'SAVINGS')
       .reduce((total, event) => {
         const amount = getEventDisplayAmount(event)
         return total + (isNaN(amount) || !isFinite(amount) ? 0 : amount)
@@ -688,6 +688,12 @@ export const useEventsStore = defineStore('events', () => {
     filteredEvents.value = evts || []
   }
 
+  function setCombinedActiveEvents(evts) {
+    const next = evts || []
+    combinedActiveEvents.value = next
+    filteredEvents.value = next
+  }
+
   async function getAllActiveScenarioEvents(activeScenarioIds, startDate, endDate) {
     const allEvents = []
     const seenEvents = new Set()
@@ -879,6 +885,7 @@ export const useEventsStore = defineStore('events', () => {
     resetForNewUser,
     clearError,
     setFilteredEvents,
+    setCombinedActiveEvents,
     getAllActiveScenarioEvents,
     summarizeScenarioForRange,
     calculateLoanDetails,

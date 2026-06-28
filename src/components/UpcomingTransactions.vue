@@ -3,8 +3,8 @@
     <q-card-section class="upcoming-section">
       <div class="upcoming-header">
         <h3 class="upcoming-title">Upcoming</h3>
-        <span v-if="displayedTransactions.length" class="upcoming-count">
-          {{ displayedTransactions.length }}
+        <span v-if="displayedTransactions.length" class="upcoming-hint">
+          Click Transaction To Edit
         </span>
       </div>
 
@@ -230,13 +230,13 @@ function toLocalDateString(date) {
   margin: 0;
 }
 
-.upcoming-count {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--buddy-text-dim);
-  background: var(--buddy-surface-inset);
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
+.upcoming-hint {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--buddy-text-faint);
+  text-align: right;
+  line-height: 1.2;
+  max-width: 55%;
 }
 
 .upcoming-transactions-list {

@@ -44,15 +44,14 @@ describe('scenarioSummary.js', () => {
       ]
       const result = summarizeEvents(events)
       expect(result.income).toBe(5000)
-      expect(result.expenses).toBe(2100)
+      expect(result.expenses).toBe(2500)
       expect(result.savings).toBe(400)
-      // net is income minus expenses (savings is reported separately)
-      expect(result.net).toBe(2900)
+      expect(result.net).toBe(2500)
     })
 
-    it('treats savings as its own bucket, not an expense', () => {
+    it('counts savings debits as expenses and in the savings bucket', () => {
       const result = summarizeEvents([{ type: 'DEBIT', category: 'SAVINGS', amount: '250' }])
-      expect(result.expenses).toBe(0)
+      expect(result.expenses).toBe(250)
       expect(result.savings).toBe(250)
     })
 

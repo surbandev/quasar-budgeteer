@@ -37,7 +37,10 @@
       <!-- Planning-only "Connected Accounts" → active scenario layers -->
       <div class="scenarios-panel">
         <div class="scenarios-panel-header">
-          <h3 class="scenarios-panel-title">Active Scenarios</h3>
+          <h3 class="scenarios-panel-title">
+            Active Scenarios
+            <span class="scenarios-panel-count">{{ activeLayerCountLabel }}</span>
+          </h3>
           <div class="scenarios-panel-actions">
             <q-btn flat dense round icon="more_horiz" color="white" size="sm">
               <q-menu anchor="bottom right" self="top right" class="scenario-menu" :offset="[0, 8]">
@@ -51,14 +54,34 @@
                   </div>
                   <q-separator class="q-my-sm" />
                   <div class="scenarios-list">
-                    <div class="scenario-card default-scenario active">
-                      <div class="scenario-card-content">
+                    <div
+                      class="scenario-card"
+                      :class="{ active: activeScenarios.has('default') }"
+                    >
+                      <div
+                        class="scenario-card-content"
+                        @click="$emit('toggleScenario', { id: 'default', name: 'Base Budget' })"
+                      >
                         <div class="scenario-info">
-                          <q-icon name="check_circle" color="positive" size="20px" />
+                          <q-icon
+                            :name="
+                              activeScenarios.has('default')
+                                ? 'check_circle'
+                                : 'radio_button_unchecked'
+                            "
+                            :color="activeScenarios.has('default') ? 'positive' : 'grey-6'"
+                            size="20px"
+                          />
                           <span class="scenario-name">Base Budget</span>
                         </div>
                         <div class="scenario-status">
-                          <span class="status-badge default-badge">Default</span>
+                          <span
+                            v-if="activeScenarios.has('default')"
+                            class="status-badge default-badge"
+                          >
+                            Default
+                          </span>
+                          <span v-else class="status-badge inactive-badge">Inactive</span>
                         </div>
                       </div>
                     </div>
@@ -142,6 +165,10 @@
             <span class="scenario-row-name">Bills</span>
             <span class="scenario-row-amount">{{ formatCurrency(monthlyExpenses) }}</span>
           </div>
+          <div class="scenario-row">
+            <span class="scenario-row-name">Savings</span>
+            <span class="scenario-row-amount positive">{{ formatCurrency(monthlySavings) }}</span>
+          </div>
           <div class="scenario-row scenario-row-net">
             <span class="scenario-row-name">Net</span>
             <span class="scenario-row-amount" :class="netClass(planNet)">
@@ -149,10 +176,6 @@
             </span>
           </div>
         </div>
-
-        <p class="scenarios-panel-footer">
-          {{ activeLayerCount }} layer{{ activeLayerCount === 1 ? '' : 's' }} in this view
-        </p>
       </div>
     </q-card-section>
   </q-card>
@@ -266,16 +289,18 @@ defineEmits(['toggleScenario', 'deleteScenario'])
 const eventsStore = useEventsStore()
 
 // Use store values as single source of truth (override props if store has values)
-const monthlyIncome = computed(() => eventsStore.monthlyIncome || props.monthlyIncome)
-const monthlyExpenses = computed(() => eventsStore.monthlyExpenses || props.monthlyExpenses)
+const monthlyIncome = computed(() => eventsStore.monthlyIncome ?? props.monthlyIncome)
+const monthlyExpenses = computed(() => eventsStore.monthlyExpenses ?? props.monthlyExpenses)
+const monthlySavings = computed(() => eventsStore.monthlySavings ?? props.monthlySavings)
 const leftThisMonth = computed(() => props.totalExpensesLeft || 0)
 const planNet = computed(() => monthlyIncome.value - monthlyExpenses.value)
 
-// Scenarios currently layered on top of the base plan (menu only).
-const activeLayerScenarios = computed(() =>
-  props.availableScenarios.filter((s) => props.activeScenarios.has(s.id)),
-)
-const activeLayerCount = computed(() => 1 + activeLayerScenarios.value.length)
+const activeLayerCount = computed(() => props.activeScenarios.size)
+const activeLayerCountLabel = computed(() => {
+  const count = activeLayerCount.value
+  if (count <= 1) return String(count)
+  return `+${count}`
+})
 
 const router = useRouter()
 
@@ -833,6 +858,15 @@ function formatCurrency(amount) {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--buddy-text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.scenarios-panel-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--buddy-text-dim);
 }
 
 .scenarios-panel-actions {
@@ -866,12 +900,6 @@ function formatCurrency(amount) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.scenarios-panel-footer {
-  margin: 0.85rem 0 0;
-  color: var(--buddy-text-faint);
-  font-size: 0.78rem;
 }
 
 .chart-label {
@@ -1226,18 +1254,6 @@ function formatCurrency(amount) {
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(56, 142, 60, 0.3));
   color: #a5d6a7;
   border: 1px solid rgba(76, 175, 80, 0.5);
-}
-
-.default-scenario {
-  cursor: default;
-  background: rgba(76, 175, 80, 0.15);
-  border-color: rgba(76, 175, 80, 0.4);
-
-  &:hover {
-    transform: none;
-    background: rgba(76, 175, 80, 0.15);
-    border-color: rgba(76, 175, 80, 0.4);
-  }
 }
 
 .no-scenarios-message {

@@ -100,13 +100,13 @@ describe('events store', () => {
     expect(store.monthlyIncome).toBe(100)
   })
 
-  it('monthlyExpenses excludes SAVINGS category', () => {
+  it('monthlyExpenses includes SAVINGS category debits', () => {
     const store = useEventsStore()
     store.combinedActiveEvents = [
       { type: 'DEBIT', category: 'GROCERY', amount: 50 },
       { type: 'DEBIT', category: 'SAVINGS', amount: 100 },
     ]
-    expect(store.monthlyExpenses).toBe(50)
+    expect(store.monthlyExpenses).toBe(150)
   })
 
   it('monthlySavings sums only SAVINGS category', () => {
@@ -164,6 +164,14 @@ describe('events store', () => {
     const store = useEventsStore()
     const evts = [{ id: 1, name: 'E1' }]
     store.setFilteredEvents(evts)
+    expect(store.getFilteredEvents).toEqual(evts)
+  })
+
+  it('setCombinedActiveEvents syncs combined and filtered events', () => {
+    const store = useEventsStore()
+    const evts = [{ id: 1, type: 'DEBIT', category: 'GROCERIES', amount: '10' }]
+    store.setCombinedActiveEvents(evts)
+    expect(store.combinedActiveEvents).toEqual(evts)
     expect(store.getFilteredEvents).toEqual(evts)
   })
 

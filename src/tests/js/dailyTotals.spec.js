@@ -19,12 +19,12 @@ describe('dailyTotals.js', () => {
     expect(dailySpending[1]).toBe(200)
   })
 
-  it('excludes SAVINGS from both income and expenses', () => {
+  it('includes SAVINGS debits in daily expenses and spending', () => {
     const events = [{ date: '2026-06-03', type: 'DEBIT', category: 'SAVINGS', amount: '300' }]
     const { dailyIncome, dailyExpenses, dailySpending } = aggregateDailyTotals(events, start, end)
-    expect(dailyExpenses[2]).toBe(0)
+    expect(dailyExpenses[2]).toBe(300)
     expect(dailyIncome[2]).toBe(0)
-    expect(dailySpending[2]).toBe(0)
+    expect(dailySpending[2]).toBe(300)
   })
 
   it('uses the monthly payment for loan events', () => {

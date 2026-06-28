@@ -51,15 +51,12 @@
             @select="onCalendarDaySelect"
           />
           <div class="calendar-month-bar">
-            <button type="button" class="float-bar-btn" aria-label="Previous month" @click="handlePreviousMonth">
-              <q-icon name="chevron_left" size="22px" />
+            <button type="button" class="month-nav-btn" aria-label="Previous month" @click="handlePreviousMonth">
+              <q-icon name="chevron_left" size="18px" />
             </button>
-            <button type="button" class="float-bar-label" @click="openRangePicker">
-              {{ floatBarLabel }}
-              <q-icon name="expand_more" size="18px" class="float-bar-caret" />
-            </button>
-            <button type="button" class="float-bar-btn" aria-label="Next month" @click="handleNextMonth">
-              <q-icon name="chevron_right" size="22px" />
+            <span class="month-label">{{ currentMonthYear }}</span>
+            <button type="button" class="month-nav-btn" aria-label="Next month" @click="handleNextMonth">
+              <q-icon name="chevron_right" size="18px" />
             </button>
           </div>
         </q-card-section>
@@ -180,26 +177,6 @@ const effectiveProfileId = computed(() => eventsStore.profile?.id ?? currentProf
 const currentMonthYear = computed(() =>
   currentCalendarDate.value.toLocaleString('default', { month: 'long', year: 'numeric' }),
 )
-
-const floatBarLabel = computed(() => {
-  if (quickRangePreset.value === '6m') return 'Last 6 months'
-  if (quickRangePreset.value === '1y') return 'Last 12 months'
-  return currentMonthYear.value
-})
-
-function openRangePicker() {
-  $q.bottomSheet({
-    title: 'Date range',
-    dark: true,
-    actions: [
-      { label: 'This month', id: 'month' },
-      { label: '6 months', id: '6m' },
-      { label: '1 year', id: '1y' },
-    ],
-  }).onOk((action) => {
-    handleQuickRangeSelection(action.id)
-  })
-}
 
 function getEventDisplayAmount(event) {
   if (!event) return 0
@@ -326,8 +303,8 @@ const totalExpensesLeftThisMonth = computed(() => {
   let total = 0
 
   eventsToUse.forEach((event) => {
-    // Only process DEBIT (expenses), exclude CREDIT (income) and SAVINGS
-    if (event.type !== 'DEBIT' || event.category === 'SAVINGS') return
+    // Only process DEBIT (expenses), exclude CREDIT (income)
+    if (event.type !== 'DEBIT') return
 
     if (!event.date) return
 
@@ -376,7 +353,7 @@ const totalExpensesLeftThisTerm = computed(() => {
   let total = 0
 
   eventsToUse.forEach((event) => {
-    if (event.type !== 'DEBIT' || event.category === 'SAVINGS') return
+    if (event.type !== 'DEBIT') return
     if (!event.date) return
 
     let eventDate
@@ -491,45 +468,6 @@ function initializeDateRangeToCurrentMonth() {
   quickRangePreset.value = 'month'
 }
 
-async function applyQuickRange(months) {
-  if (months === 1) {
-    initializeDateRangeToCurrentMonth()
-    await updateFilteredData()
-    return
-  }
-
-  const monthStart = new Date()
-  monthStart.setHours(0, 0, 0, 0)
-  monthStart.setDate(1)
-
-  const rangeEndDate = new Date(monthStart)
-  rangeEndDate.setMonth(rangeEndDate.getMonth() + months)
-  rangeEndDate.setDate(rangeEndDate.getDate() - 1)
-
-  startMonth.value = monthStart.getMonth() + 1
-  startDay.value = 1
-  startYear.value = monthStart.getFullYear()
-  endMonth.value = rangeEndDate.getMonth() + 1
-  endDay.value = rangeEndDate.getDate()
-  endYear.value = rangeEndDate.getFullYear()
-
-  isOneYearView.value = months === 12
-  quickRangePreset.value = months === 12 ? '1y' : '6m'
-  await updateFilteredData()
-}
-
-async function handleQuickRangeSelection(rangeKey) {
-  if (rangeKey === '6m') {
-    await applyQuickRange(6)
-    return
-  }
-  if (rangeKey === '1y') {
-    await applyQuickRange(12)
-    return
-  }
-  await applyQuickRange(1)
-}
-
 function hasDateRangeFilter() {
   return (
     startMonth.value !== null &&
@@ -632,7 +570,7 @@ async function updateFilteredData() {
 
 async function updateScenarioData() {
   combinedActiveEvents.value = await getAllActiveScenarioEvents()
-  eventsStore.setFilteredEvents(combinedActiveEvents.value)
+  eventsStore.setCombinedActiveEvents(combinedActiveEvents.value)
   calculateDailySpending()
   cacheCurrentState()
 }
@@ -715,7 +653,7 @@ function hydrateFromCache() {
   isOneYearView.value = overviewStore.isOneYearView
   activeScenarios.value = new Set(overviewStore.activeScenarios)
 
-  eventsStore.setFilteredEvents(overviewStore.combinedActiveEvents)
+  eventsStore.setCombinedActiveEvents(overviewStore.combinedActiveEvents)
 
   // Keep the fetch dedupe key in sync so a later identical range update no-ops.
   const profileId = currentProfile.value?.id || ''
@@ -751,14 +689,15 @@ async function getAllActiveScenarioEvents() {
 }
 
 async function toggleScenario(scenario) {
-  const wasActive = activeScenarios.value.has(scenario.id)
+  const next = new Set(activeScenarios.value)
 
-  if (wasActive) {
-    activeScenarios.value.delete(scenario.id)
+  if (next.has(scenario.id)) {
+    next.delete(scenario.id)
   } else {
-    activeScenarios.value.add(scenario.id)
+    next.add(scenario.id)
   }
 
+  activeScenarios.value = next
   await updateScenarioData()
 }
 
@@ -774,7 +713,9 @@ async function deleteScenario(scenario) {
 
       // Remove from active scenarios if it was active
       if (activeScenarios.value.has(scenario.id)) {
-        activeScenarios.value.delete(scenario.id)
+        const next = new Set(activeScenarios.value)
+        next.delete(scenario.id)
+        activeScenarios.value = next
         await updateScenarioData()
       }
 
@@ -897,8 +838,7 @@ async function loadProfileData() {
     if (currentProfile.value) {
       activeScenarios.value = new Set(['default'])
       combinedActiveEvents.value = []
-      eventsStore.setFilteredEvents([])
-      eventsStore.combinedActiveEvents = []
+      eventsStore.setCombinedActiveEvents([])
       dailySpendingData.value = []
       dailyIncomeData.value = []
       dailyExpensesData.value = []
@@ -913,10 +853,6 @@ async function loadProfileData() {
 
       if (!hasDateRangeFilter()) {
         initializeDateRangeToCurrentMonth()
-      }
-
-      if (!activeScenarios.value.has('default')) {
-        activeScenarios.value.add('default')
       }
 
       await updateFilteredData()
@@ -941,7 +877,9 @@ watch(currentProfile, async (newProfile) => {
 
 <style scoped lang="scss">
 .overview-page {
-  padding: 0;
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
   min-height: 100vh;
   background: var(--page-bg);
   position: relative;
@@ -955,6 +893,12 @@ watch(currentProfile, async (newProfile) => {
   display: flex;
   flex-direction: column;
   gap: var(--buddy-card-gap);
+
+  // Flex gap does not apply after the last card; mirror one card-gap below it so
+  // the space above the nav matches the spacing between cards.
+  > :last-child {
+    margin-bottom: var(--buddy-card-gap);
+  }
 }
 
 // Overlap pull lives on .buddy-overlap-card inside the chart component.
@@ -973,50 +917,39 @@ watch(currentProfile, async (newProfile) => {
 .calendar-month-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
-  padding: 0.65rem 0.5rem;
-  background: var(--buddy-surface-inset);
-  border: 1px solid var(--buddy-hairline);
-  border-radius: 999px;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding: 0.15rem 0;
 }
 
-.float-bar-btn {
-  width: 36px;
-  height: 36px;
+.month-nav-btn {
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  padding: 0;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.06);
   }
 }
 
-.float-bar-label {
-  flex: 1;
-  border: none;
-  background: transparent;
-  color: #fff;
-  font-size: 1rem;
+.month-label {
+  font-size: 0.82rem;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-}
-
-.float-bar-caret {
-  opacity: 0.7;
+  color: var(--buddy-text-dim);
+  letter-spacing: 0.01em;
+  min-width: 7rem;
+  text-align: center;
 }
 
 // Mobile optimization
@@ -1718,7 +1651,7 @@ watch(currentProfile, async (newProfile) => {
     max-width: min(90vw, 1600px);
     width: 100%;
     padding: clamp(1.5rem, 2vw, 2.5rem);
-    padding-bottom: 0;
+    padding-bottom: clamp(1.5rem, 2vw, 2.5rem);
     gap: clamp(1rem, 2vw, 1.5rem);
   }
 

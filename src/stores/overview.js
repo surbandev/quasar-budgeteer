@@ -83,7 +83,7 @@ export const useOverviewStore = defineStore('overview', () => {
 
       await eventsStore.fetchEventsForDateRange(start, end)
       const events = await eventsStore.getAllActiveScenarioEvents(['default'], start, end)
-      eventsStore.setFilteredEvents(events)
+      eventsStore.setCombinedActiveEvents(events)
 
       const totals = aggregateDailyTotals(events, start, end)
 

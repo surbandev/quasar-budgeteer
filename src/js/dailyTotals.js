@@ -50,7 +50,7 @@ export function aggregateDailyTotals(events, start, end) {
     if (event.type === 'CREDIT') {
       dailyIncome[dayIndex] += amount
       dailySpending[dayIndex] += amount
-    } else if (event.type === 'DEBIT' && event.category !== 'SAVINGS') {
+    } else if (event.type === 'DEBIT') {
       dailyExpenses[dayIndex] += amount
       dailySpending[dayIndex] += amount
     }
