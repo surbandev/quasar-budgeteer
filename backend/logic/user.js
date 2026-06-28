@@ -103,7 +103,12 @@ async function requestAccess(req, res) {
             plan,
         });
 
-        const result = await sendAccessRequestEmail({
+        // Respond immediately — email is best-effort and must not block the user.
+        // (Railway Hobby blocks SMTP; even with timeouts, we don't want registration
+        // to hang or fail because email delivery failed.)
+        res.status(200).json({ submitted: true });
+
+        sendAccessRequestEmail({
             firstname,
             lastname,
             username,
@@ -111,14 +116,10 @@ async function requestAccess(req, res) {
             phone,
             password,
             plan,
+        }).catch((mailErr) => {
+            console.error('Background access-request email failed:', mailErr);
         });
-
-        if (result && result.error) {
-            res.status(502).json({ error: 'Could not submit your request. Please try again later.' });
-            return;
-        }
-
-        res.status(200).json({ submitted: true });
+        return;
     } catch (e) {
         console.error('Error in requestAccess:', e);
         logger.logError('requestAccess failed', e.message || String(e));
