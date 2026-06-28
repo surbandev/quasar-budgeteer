@@ -1,59 +1,41 @@
 {
-
   "version": "0.2.0",
-
   "configurations": [
-
     {
-
       "name": "Run",
-
       "type": "node-terminal",
-
       "request": "launch",
-
-      "command": "npm run dev:all"
-
+      "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && npm run dev:all"
     },
-
     {
-
       "name": "Run (Railway DB)",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npm run dev:all:railway"
-
     },
-
     {
-
       "name": "Run Tests",
-
       "type": "node-terminal",
-
       "request": "launch",
-
-      "command": "npm run test:run"
-
+      "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && npm run test:run"
     },
-
     {
-
-      "name": "Deploy",
-
+      "name": "Run on iOS (device/simulator, macOS)",
       "type": "node-terminal",
-
       "request": "launch",
-
+      "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && npm run ios:run"
+    },
+    {
+      "name": "Build iOS + open Xcode (macOS)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && npm run ios:build"
+    },
+    {
+      "name": "Deploy",
+      "type": "node-terminal",
+      "request": "launch",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .vscode/deploy.ps1"
-
     }
-
   ]
-
 }
-
-
