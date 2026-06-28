@@ -67,6 +67,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function requestAccess(userData) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await axios.post(`${getAPIURL()}/api/user/request-access`, userData)
+      return response.data
+    } catch (err) {
+      console.error('Access request failed:', err)
+      error.value = err.response?.data?.error || err.message || 'Request failed'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function logout() {
     token.value = null
     userID.value = null
@@ -170,6 +186,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     login,
     register,
+    requestAccess,
     logout,
     fetchUser,
     updateUser,

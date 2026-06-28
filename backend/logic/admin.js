@@ -2,6 +2,8 @@ const _ = require('lodash')
 const userDal = require('../dal/user')
 const { createFullUser } = require('./provisionUser')
 const { isAdminUsername } = require('../middlware/admin')
+const { sendAccountActivatedEmail } = require('./accountEmails')
+const logger = require('./logger')
 
 function sanitizeUser(user) {
   if (!user) return null
@@ -46,10 +48,17 @@ async function createUser(req, res) {
       return
     }
 
+    // Best-effort: let the new user know their account is active. Email failure
+    // must not fail account creation, so we don't await/throw on it.
+    sendAccountActivatedEmail({ email, firstname, username }).catch((mailErr) => {
+      console.error('Error sending activation email:', mailErr)
+    })
+
     res.status(201).json({ user: sanitizeUser(result.user) })
   } catch (e) {
     console.error('Error creating user:', e)
     const message = e.sqlMessage || e.message || 'Internal Server Error'
+    logger.logError('Admin createUser failed', message)
     res.status(500).json({ error: message })
   }
 }

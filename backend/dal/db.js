@@ -204,6 +204,32 @@ function patchParams(params) {
   return params
 }
 
+// Ensures master-DB tables this app creates at runtime exist. Safe to run on
+// every boot (IF NOT EXISTS). The app_logs table backs the admin Logs viewer.
+async function ensureAppSchema() {
+  try {
+    await dbExecute(
+      `CREATE TABLE IF NOT EXISTS app_logs (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        category VARCHAR(32) NOT NULL,
+        level VARCHAR(16) NOT NULL DEFAULT 'info',
+        message TEXT,
+        detail TEXT,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    )
+    await dbExecute(
+      'CREATE INDEX idx_app_logs_created_at ON app_logs (created_at)',
+    ).catch(() => {
+      /* index already exists */
+    })
+    return true
+  } catch (e) {
+    console.error('Failed to ensure app schema:', e)
+    return false
+  }
+}
+
 async function checkAdminAccount() {
   try {
     let adminRow = await dbQuery('SELECT * FROM users WHERE username = ?', ['admin'])
@@ -234,4 +260,5 @@ module.exports = {
   dbExecuteSession,
   dbQuerySession,
   checkAdminAccount,
+  ensureAppSchema,
 }

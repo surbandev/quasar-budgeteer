@@ -9,6 +9,12 @@ async function submitFeedback(userID, type, message) {
     }
 }
 
+async function listFeedback() {
+    const rows = await db.dbQuery("SELECT * FROM feedback");
+    return rows || [];
+}
+
 module.exports = {
-    submitFeedback
+    submitFeedback,
+    listFeedback
 }

@@ -12,57 +12,175 @@
     <div class="settings-container">
       <h2 class="form-title">Admin Settings</h2>
 
-      <q-inner-loading :showing="adminStore.loading" />
+      <q-tabs
+        v-model="activeTab"
+        class="admin-tabs"
+        active-color="primary"
+        indicator-color="primary"
+        align="justify"
+        no-caps
+        dense
+      >
+        <q-tab name="users" icon="group" label="Users" />
+        <q-tab name="feedback" icon="forum" label="Feedback" />
+        <q-tab name="logs" icon="receipt_long" label="Logs" />
+      </q-tabs>
 
-      <div class="users-section">
-        <h3 class="section-title">Manage Users</h3>
+      <q-tab-panels v-model="activeTab" class="admin-tab-panels" animated keep-alive>
+        <!-- Users -->
+        <q-tab-panel name="users" class="admin-tab-panel">
+          <div class="users-section">
+            <div class="section-header">
+              <h3 class="section-title">Manage Users</h3>
+            </div>
 
-        <div v-if="adminStore.users.length === 0 && !adminStore.loading" class="empty-state">
-          No users found.
-        </div>
+            <q-inner-loading :showing="adminStore.loading" />
 
-        <div class="users-list">
-          <div v-for="user in adminStore.users" :key="user.id" class="user-card">
-            <div class="user-info">
-              <q-icon name="admin_panel_settings" size="md" class="user-icon" />
-              <div>
-                <div class="user-name">{{ displayName(user) }}</div>
-                <div class="user-meta">@{{ user.username }}</div>
-                <div v-if="user.email" class="user-meta">{{ user.email }}</div>
+            <div v-if="adminStore.users.length === 0 && !adminStore.loading" class="empty-state">
+              No users found.
+            </div>
+
+            <div class="users-list">
+              <div v-for="user in adminStore.users" :key="user.id" class="user-card">
+                <div class="user-info">
+                  <q-icon name="admin_panel_settings" size="md" class="user-icon" />
+                  <div>
+                    <div class="user-name">{{ displayName(user) }}</div>
+                    <div class="user-meta">@{{ user.username }}</div>
+                    <div v-if="user.email" class="user-meta">{{ user.email }}</div>
+                  </div>
+                </div>
+                <div class="user-actions">
+                  <q-btn flat dense icon="edit" color="primary" @click="editUser(user)" />
+                  <q-btn
+                    flat
+                    dense
+                    icon="delete"
+                    class="delete-button"
+                    :disable="isProtectedUser(user)"
+                    @click="confirmDeleteUser(user)"
+                  />
+                </div>
               </div>
             </div>
-            <div class="user-actions">
-              <q-btn flat dense icon="edit" color="primary" @click="editUser(user)" />
-              <q-btn
-                flat
-                dense
-                icon="delete"
-                class="delete-button"
-                :disable="isProtectedUser(user)"
-                @click="confirmDeleteUser(user)"
-              />
+
+            <q-btn
+              label="Add New User"
+              icon="add"
+              class="add-user-button"
+              unelevated
+              no-caps
+              @click="openCreateDialog"
+            />
+          </div>
+        </q-tab-panel>
+
+        <!-- Feedback -->
+        <q-tab-panel name="feedback" class="admin-tab-panel">
+          <div class="section-header">
+            <h3 class="section-title">Feedback Received</h3>
+            <q-btn
+              flat
+              dense
+              round
+              icon="refresh"
+              color="white"
+              :loading="adminStore.feedbackLoading"
+              @click="loadFeedback"
+            />
+          </div>
+
+          <q-inner-loading :showing="adminStore.feedbackLoading" />
+
+          <div
+            v-if="adminStore.feedback.length === 0 && !adminStore.feedbackLoading"
+            class="empty-state"
+          >
+            No feedback yet.
+          </div>
+
+          <div class="feedback-list">
+            <div v-for="(item, idx) in adminStore.feedback" :key="item.id || idx" class="feedback-card">
+              <div class="feedback-head">
+                <span class="feedback-type" :class="`type-${(item.type || 'general').toLowerCase()}`">
+                  {{ item.type || 'general' }}
+                </span>
+                <span class="feedback-date">{{ formatDate(item.submittedAt) }}</span>
+              </div>
+              <div class="feedback-message">{{ item.message }}</div>
+              <div class="feedback-user">
+                {{ item.displayName || 'Unknown user'
+                }}<span v-if="item.username"> (@{{ item.username }})</span>
+              </div>
             </div>
           </div>
-        </div>
+        </q-tab-panel>
 
-        <q-btn
-          label="Add New User"
-          icon="add"
-          class="add-user-button"
-          unelevated
-          no-caps
-          @click="openCreateDialog"
-        />
+        <!-- Logs -->
+        <q-tab-panel name="logs" class="admin-tab-panel">
+          <div class="section-header">
+            <h3 class="section-title">Logs</h3>
+            <q-btn
+              flat
+              dense
+              round
+              icon="refresh"
+              color="white"
+              :loading="adminStore.logsLoading"
+              @click="loadLogs"
+            />
+          </div>
 
-        <q-btn
-          label="Back to Tools"
-          flat
-          color="white"
-          class="back-button"
-          no-caps
-          @click="router.push('/tools')"
-        />
-      </div>
+          <div class="log-filters">
+            <q-btn
+              v-for="filter in logFilters"
+              :key="filter.value"
+              :label="filter.label"
+              :outline="logCategory !== filter.value"
+              :unelevated="logCategory === filter.value"
+              color="primary"
+              size="sm"
+              no-caps
+              class="log-filter-btn"
+              @click="setLogCategory(filter.value)"
+            />
+          </div>
+
+          <q-inner-loading :showing="adminStore.logsLoading" />
+
+          <div v-if="adminStore.logs.length === 0 && !adminStore.logsLoading" class="empty-state">
+            No log entries.
+          </div>
+
+          <div class="logs-list">
+            <div v-for="(log, idx) in adminStore.logs" :key="log.id || idx" class="log-card">
+              <q-icon
+                :name="logIcon(log.category)"
+                :color="logColor(log.category)"
+                size="20px"
+                class="log-icon"
+              />
+              <div class="log-body">
+                <div class="log-message">{{ log.message }}</div>
+                <div v-if="log.detail" class="log-detail">{{ formatDetail(log.detail) }}</div>
+                <div class="log-meta">
+                  <span class="log-category">{{ log.category }}</span>
+                  <span class="log-date">{{ formatDate(log.created_at) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+      </q-tab-panels>
+
+      <q-btn
+        label="Back to Tools"
+        flat
+        color="white"
+        class="back-button"
+        no-caps
+        @click="router.push('/tools')"
+      />
 
       <q-dialog v-model="showUserDialog">
         <q-card class="dialog-card">
@@ -156,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAdminStore } from '../stores/admin'
@@ -172,6 +290,95 @@ const showUserDialog = ref(false)
 const editingUser = ref(null)
 const saving = ref(false)
 const showPassword = ref(false)
+
+const activeTab = ref('users')
+const logCategory = ref('')
+const feedbackLoaded = ref(false)
+
+const logFilters = [
+  { label: 'All', value: '' },
+  { label: 'Errors', value: 'ERROR' },
+  { label: 'Emails', value: 'EMAIL' },
+  { label: 'Requests', value: 'ACCOUNT_REQUEST' },
+]
+
+function formatDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString()
+}
+
+function formatDetail(detail) {
+  if (detail == null) return ''
+  try {
+    const parsed = typeof detail === 'string' ? JSON.parse(detail) : detail
+    if (parsed && typeof parsed === 'object') {
+      return Object.entries(parsed)
+        .map(([key, val]) => `${key}: ${val}`)
+        .join('  •  ')
+    }
+  } catch {
+    /* not JSON, show as-is */
+  }
+  return String(detail)
+}
+
+function logIcon(category) {
+  switch (category) {
+    case 'ERROR':
+      return 'error'
+    case 'EMAIL':
+      return 'mail'
+    case 'ACCOUNT_REQUEST':
+      return 'person_add'
+    default:
+      return 'info'
+  }
+}
+
+function logColor(category) {
+  switch (category) {
+    case 'ERROR':
+      return 'negative'
+    case 'EMAIL':
+      return 'info'
+    case 'ACCOUNT_REQUEST':
+      return 'positive'
+    default:
+      return 'grey-5'
+  }
+}
+
+async function loadFeedback() {
+  try {
+    await adminStore.fetchFeedback()
+    feedbackLoaded.value = true
+  } catch {
+    $q.notify({ type: 'negative', message: 'Failed to load feedback', position: 'top' })
+  }
+}
+
+async function loadLogs() {
+  try {
+    await adminStore.fetchLogs(logCategory.value || undefined)
+  } catch {
+    $q.notify({ type: 'negative', message: 'Failed to load logs', position: 'top' })
+  }
+}
+
+function setLogCategory(value) {
+  logCategory.value = value
+  loadLogs()
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'feedback' && !feedbackLoaded.value) {
+    loadFeedback()
+  } else if (tab === 'logs' && adminStore.logs.length === 0) {
+    loadLogs()
+  }
+})
 
 const userForm = ref({
   firstname: '',
@@ -332,7 +539,8 @@ onMounted(async () => {
 .settings-page {
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -474,6 +682,166 @@ onMounted(async () => {
 
 .back-button {
   align-self: center;
+}
+
+.admin-tabs {
+  width: 100%;
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+}
+
+.admin-tab-panels {
+  width: 100%;
+  background: transparent;
+  color: white;
+}
+
+.admin-tab-panel {
+  padding: 0;
+  position: relative;
+  min-height: 120px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-header .section-title {
+  margin: 0;
+}
+
+.feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+
+.feedback-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.feedback-type {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(102, 126, 234, 0.25);
+  color: #c7d2fe;
+}
+
+.feedback-type.type-bug {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+}
+
+.feedback-type.type-feature {
+  background: rgba(16, 185, 129, 0.22);
+  color: #6ee7b7;
+}
+
+.feedback-date,
+.log-date {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.feedback-message {
+  color: white;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feedback-user {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.log-filter-btn {
+  border-radius: 999px;
+}
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.log-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.log-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.log-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.log-message {
+  color: white;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.log-detail {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+  word-break: break-word;
+}
+
+.log-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.log-category {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .dialog-card {

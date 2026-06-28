@@ -16,7 +16,11 @@ function authConfig() {
 
 export const useAdminStore = defineStore('admin', () => {
   const users = ref([])
+  const feedback = ref([])
+  const logs = ref([])
   const loading = ref(false)
+  const feedbackLoading = ref(false)
+  const logsLoading = ref(false)
   const error = ref(null)
 
   async function fetchUsers() {
@@ -75,6 +79,42 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function fetchFeedback() {
+    feedbackLoading.value = true
+    error.value = null
+    try {
+      const response = await axios.get(`${getAPIURL()}/api/feedback/all`, authConfig())
+      feedback.value = response.data?.feedback || []
+      return feedback.value
+    } catch (err) {
+      console.error('Error fetching feedback:', err)
+      error.value = err.message || 'Failed to fetch feedback'
+      throw err
+    } finally {
+      feedbackLoading.value = false
+    }
+  }
+
+  async function fetchLogs(category) {
+    logsLoading.value = true
+    error.value = null
+    try {
+      const params = category ? { category } : {}
+      const response = await axios.get(`${getAPIURL()}/api/log/all`, {
+        ...authConfig(),
+        params,
+      })
+      logs.value = response.data?.logs || []
+      return logs.value
+    } catch (err) {
+      console.error('Error fetching logs:', err)
+      error.value = err.message || 'Failed to fetch logs'
+      throw err
+    } finally {
+      logsLoading.value = false
+    }
+  }
+
   async function deleteUser(userID) {
     loading.value = true
     error.value = null
@@ -95,9 +135,15 @@ export const useAdminStore = defineStore('admin', () => {
 
   return {
     users,
+    feedback,
+    logs,
     loading,
+    feedbackLoading,
+    logsLoading,
     error,
     fetchUsers,
+    fetchFeedback,
+    fetchLogs,
     createUser,
     updateUser,
     deleteUser,

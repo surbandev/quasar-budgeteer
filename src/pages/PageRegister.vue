@@ -194,6 +194,31 @@
             </q-form>
           </div>
         </div>
+
+        <q-dialog v-model="showSubmittedDialog" persistent>
+          <q-card class="submitted-dialog">
+            <q-card-section class="submitted-dialog-header">
+              <q-icon name="mark_email_read" size="48px" class="submitted-dialog-icon" />
+              <div class="submitted-dialog-title">Request Submitted</div>
+            </q-card-section>
+
+            <q-card-section class="submitted-dialog-body">
+              Your information has been submitted to the application administrator. If your
+              request is approved, you'll receive an email letting you know that your account
+              has been activated.
+            </q-card-section>
+
+            <q-card-actions align="right" class="submitted-dialog-actions">
+              <q-btn
+                unelevated
+                no-caps
+                label="Back to Sign In"
+                class="submitted-dialog-btn"
+                to="/login"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -202,8 +227,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useQuasar } from 'quasar'
+import { useAuthStore } from '../stores/auth'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const step = ref(1)
 const selectedPlan = ref('basic')
@@ -215,6 +242,7 @@ const phone = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const isLoading = ref(false)
+const showSubmittedDialog = ref(false)
 
 function handleContinue() {
   step.value = 2
@@ -227,19 +255,61 @@ function handleUsernameInput(value) {
   }
 }
 
-function handleCreateAccount() {
-  // TODO: Implement account creation with API call
-  isLoading.value = true
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())
+}
 
-  setTimeout(() => {
+function validateForm() {
+  if (
+    !firstName.value.trim() ||
+    !lastName.value.trim() ||
+    !username.value.trim() ||
+    !email.value.trim() ||
+    !password.value
+  ) {
+    $q.notify({ type: 'negative', message: 'Please fill in all fields.', position: 'top' })
+    return false
+  }
+
+  if (!isValidEmail(email.value)) {
+    $q.notify({ type: 'negative', message: 'Please enter a valid email address.', position: 'top' })
+    return false
+  }
+
+  if (password.value !== confirmPassword.value) {
+    $q.notify({ type: 'negative', message: 'Passwords do not match.', position: 'top' })
+    return false
+  }
+
+  return true
+}
+
+async function handleCreateAccount() {
+  if (!validateForm()) return
+
+  isLoading.value = true
+  try {
+    await authStore.requestAccess({
+      firstname: firstName.value.trim(),
+      lastname: lastName.value.trim(),
+      username: username.value.trim().toLowerCase(),
+      email: email.value.trim(),
+      phone: phone.value.trim(),
+      password: password.value,
+      plan: selectedPlan.value,
+    })
+    showSubmittedDialog.value = true
+  } catch (error) {
     $q.notify({
-      type: 'positive',
-      message: 'Account created successfully!',
-      timeout: 2000,
+      type: 'negative',
+      message:
+        error.response?.data?.error ||
+        'Something went wrong submitting your request. Please try again.',
       position: 'top',
     })
+  } finally {
     isLoading.value = false
-  }, 1000)
+  }
 }
 </script>
 
@@ -945,6 +1015,52 @@ function handleCreateAccount() {
 .create-account-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.submitted-dialog {
+  background: rgba(30, 30, 35, 0.98);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  max-width: 440px;
+  width: 92vw;
+}
+
+.submitted-dialog-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1.75rem;
+}
+
+.submitted-dialog-icon {
+  color: #4caf50;
+}
+
+.submitted-dialog-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.submitted-dialog-body {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.submitted-dialog-actions {
+  padding: 0.5rem 1rem 1.25rem;
+}
+
+.submitted-dialog-btn.q-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

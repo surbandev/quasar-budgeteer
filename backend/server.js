@@ -11,7 +11,7 @@ if (process.env.BUDGETEER_ENV_FILE) {
 }
 const express = require('express')
 const cors = require('cors')
-const { initDB, checkAdminAccount } = require('./dal/db')
+const { initDB, checkAdminAccount, ensureAppSchema } = require('./dal/db')
 const { tweakRquest } = require('./middlware/global')
 
 const userRoutes = require('./routes/user')
@@ -19,6 +19,7 @@ const profilesRoutes = require('./routes/profile')
 const scenarioRoutes = require('./routes/scenario')
 const settingRoutes = require('./routes/setting')
 const feedbackRoutes = require('./routes/feedback')
+const logRoutes = require('./routes/log')
 
 const prod = process.env.PRODUCTION === 'true'
 const port = Number(process.env.PORT) || 3000
@@ -62,6 +63,7 @@ function createApp({ serveStatic = prod } = {}) {
   app.use(apiDir + 'scenario', scenarioRoutes)
   app.use(apiDir + 'setting', settingRoutes)
   app.use(apiDir + 'feedback', feedbackRoutes)
+  app.use(apiDir + 'log', logRoutes)
 
   if (serveStatic) {
     app.get('*', (req, res) => {
@@ -82,6 +84,7 @@ async function start() {
     console.error('Failed to verify admin account. Exiting')
     process.exit(1)
   }
+  await ensureAppSchema()
 
   const app = createApp()
   app.listen(port, () => {

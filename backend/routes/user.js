@@ -25,6 +25,10 @@ app.post('/register', async (req, res) => {
     userLogic.register(req,res);
 });
 
+app.post('/request-access', async (req, res) => {
+    userLogic.requestAccess(req,res);
+});
+
 app.put('/update-user', async (req, res) => {
     userLogic.updateUser(req,res);
 });
