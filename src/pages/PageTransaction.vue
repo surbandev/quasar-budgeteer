@@ -184,10 +184,7 @@
                 </div>
 
                 <!-- For loans, show calculated end date as read-only info -->
-                <div
-                  v-if="isLoanCategory && newEvent.loanTerm && newEvent.startDate"
-                  class="col-12 col-md-6"
-                >
+                <div v-if="isLoanCategory && loanCalculationPreview" class="col-12 col-md-6">
                   <q-input
                     :model-value="newEvent.endDate"
                     type="text"
@@ -197,6 +194,77 @@
                     readonly
                     hint="Automatically calculated from loan term"
                   />
+                </div>
+              </div>
+
+              <!-- Loan Calculation Preview -->
+              <div
+                v-if="isLoanCategory && loanCalculationPreview"
+                class="loan-preview-card q-mt-lg"
+              >
+                <h4 class="loan-preview-title">Loan Calculation Details</h4>
+                <div class="loan-preview-grid">
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Standard Payment:</span>
+                    <span class="loan-preview-value">{{ formatLoanCurrency(loanCalculationPreview.standardPayment || 0) }}</span>
+                  </div>
+                  <div v-if="isMortgageCategory" class="loan-preview-item highlight">
+                    <span class="loan-preview-label">Total Monthly Payment:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanCurrency(
+                        (loanCalculationPreview.monthlyPayment || 0) +
+                          (parseFloat(newEvent.escrow) || 0),
+                      )
+                    }}</span>
+                  </div>
+                  <div v-else class="loan-preview-item highlight">
+                    <span class="loan-preview-label">Total Monthly Payment:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanCurrency(
+                        (loanCalculationPreview.standardPayment || 0) +
+                          (loanCalculationPreview.additionalPrincipal || 0),
+                      )
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Additional Principal:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanCurrency(loanCalculationPreview.additionalPrincipal || 0)
+                    }}</span>
+                  </div>
+                  <div v-if="isMortgageCategory" class="loan-preview-item">
+                    <span class="loan-preview-label">Escrow:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanCurrency(parseFloat(newEvent.escrow) || 0)
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Loan Term:</span>
+                    <span class="loan-preview-value"
+                      >{{ loanCalculationPreview.totalPayments }} months</span
+                    >
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">End Date:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanDate(loanCalculationPreview.endDate)
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Total Interest:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanCurrency(loanCalculationPreview.totalInterest || 0)
+                    }}</span>
+                  </div>
+                  <div class="loan-preview-item">
+                    <span class="loan-preview-label">Total Paid Over Term:</span>
+                    <span class="loan-preview-value">{{
+                      formatLoanCurrency(
+                        loanCalculationPreview.monthlyPayment *
+                          loanCalculationPreview.totalPayments,
+                      )
+                    }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -253,6 +321,8 @@ const calendarStore = useCalendarStore()
 const isLoadingEvent = ref(false)
 const isSaving = ref(false)
 const currentEvent = ref(null)
+const loanCalculationPreview = ref(null)
+const loanCalculationTimeout = ref(null)
 
 const newEvent = ref({
   name: '',
@@ -300,6 +370,112 @@ function handleCategoryChange(value) {
   } else {
     newEvent.value.type = 'DEBIT'
   }
+
+  if (constantsStore.isLoanCategory(value)) {
+    debouncedCalculateLoan()
+  } else {
+    loanCalculationPreview.value = null
+  }
+}
+
+function debouncedCalculateLoan() {
+  const hasAllFields =
+    newEvent.value.amount &&
+    newEvent.value.interest &&
+    newEvent.value.loanTerm &&
+    newEvent.value.startDate
+
+  if (!hasAllFields && newEvent.value.startDate && newEvent.value.loanTerm) {
+    calculateEndDateFromTerm()
+  }
+
+  if (loanCalculationTimeout.value) {
+    clearTimeout(loanCalculationTimeout.value)
+  }
+
+  loanCalculationTimeout.value = setTimeout(() => {
+    calculateLoanDetails()
+  }, 500)
+}
+
+async function calculateLoanDetails() {
+  if (!isLoanCategory.value) {
+    loanCalculationPreview.value = null
+    return
+  }
+
+  const totalLoanAmount = parseFloat(newEvent.value.amount) || 0
+  const additionalPrincipalPayment = parseFloat(newEvent.value.principal) || 0
+  const interestRate = parseFloat(newEvent.value.interest) || 0
+  const startDate = newEvent.value.startDate
+  const loanTerm = newEvent.value.loanTerm
+
+  if (!totalLoanAmount || !interestRate || !startDate || !loanTerm) {
+    loanCalculationPreview.value = null
+    return
+  }
+
+  try {
+    const response = await eventsStore.calculateLoanDetails({
+      totalLoanAmount,
+      additionalPrincipalPayment,
+      interestRate,
+      startDate: String(startDate).split('T')[0],
+      loanTerm: parseInt(loanTerm, 10),
+    })
+
+    if (response) {
+      loanCalculationPreview.value = {
+        ...response,
+        monthlyPayment: roundToCents(response.monthlyPayment),
+      }
+
+      if (response.endDate) {
+        newEvent.value.endDate = new Date(response.endDate).toISOString().split('T')[0]
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating loan:', error)
+    loanCalculationPreview.value = null
+  }
+}
+
+function roundToCents(value) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) return 0
+  return Math.round((numericValue + Number.EPSILON) * 100) / 100
+}
+
+function formatLoanDate(dateString) {
+  if (!dateString) return 'N/A'
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return 'Invalid Date'
+  }
+}
+
+function formatLoanCurrency(amount) {
+  const numericValue = Number(amount) || 0
+  return `$${Math.abs(numericValue).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
+function resolvedMonthlyPayment() {
+  if (loanCalculationPreview.value?.monthlyPayment != null) {
+    return roundToCents(loanCalculationPreview.value.monthlyPayment)
+  }
+  if (newEvent.value.monthlyAmount) {
+    return roundToCents(newEvent.value.monthlyAmount)
+  }
+  return 0
 }
 
 function calculateEndDateFromTerm() {
@@ -343,6 +519,10 @@ function loadCurrentEventData() {
           ? String(currentEvent.value.loan_term)
           : '',
       escrow: currentEvent.value.escrow ?? '',
+    }
+
+    if (constantsStore.isLoanCategory(newEvent.value.category)) {
+      nextTick(() => debouncedCalculateLoan())
     }
   } else {
     // For new events, set up default scenario
@@ -404,6 +584,12 @@ async function saveEvent() {
 
     if (eventID) {
       // Updating existing event
+      const monthlyPayment = isLoanCategory.value ? resolvedMonthlyPayment() : 0
+      const calculatedEndDate =
+        isLoanCategory.value && loanCalculationPreview.value?.endDate
+          ? toDateInputValue(loanCalculationPreview.value.endDate)
+          : formattedEndDate
+
       const updatePayload = {
         eventID: eventID,
         profileID: newEvent.value.profileID,
@@ -414,36 +600,40 @@ async function saveEvent() {
         category: constantsStore.normalizeCategory(newEvent.value.category),
         frequency: newEvent.value.frequency,
         startDate: formattedStartDate,
-        endDate: formattedEndDate,
+        endDate: calculatedEndDate || formattedEndDate,
         amount: parseFloat(newEvent.value.amount),
         active: newEvent.value.active ?? true,
         principal: newEvent.value.principal ? parseFloat(newEvent.value.principal) : 0,
         interest: newEvent.value.interest ? parseFloat(newEvent.value.interest) : 0,
-        calculatedEndDate: formattedEndDate,
-        monthlyPayment: newEvent.value.monthlyAmount ? parseFloat(newEvent.value.monthlyAmount) : 0,
+        calculatedEndDate: calculatedEndDate || formattedEndDate,
+        monthlyPayment,
         escrow: newEvent.value.escrow ? parseFloat(newEvent.value.escrow) : 0,
-        term: newEvent.value.loanTerm ? parseInt(newEvent.value.loanTerm) : 0,
+        term: newEvent.value.loanTerm ? parseInt(newEvent.value.loanTerm, 10) : 0,
       }
 
       await eventsStore.updateEvent(eventID, updatePayload)
       showSuccessCheckmark()
     } else {
       // Creating new event - explicitly set ALL 18 fields, use null for empty values (matching original app)
+      const monthlyPayment = isLoanCategory.value ? resolvedMonthlyPayment() : null
+      const calculatedEndDate =
+        isLoanCategory.value && loanCalculationPreview.value?.endDate
+          ? toDateInputValue(loanCalculationPreview.value.endDate)
+          : formattedEndDate
+
       const createPayload = {
         active: newEvent.value.active ?? true,
         amount: parseFloat(newEvent.value.amount),
-        calculatedEndDate: formattedEndDate,
+        calculatedEndDate: calculatedEndDate || formattedEndDate,
         category: constantsStore.normalizeCategory(newEvent.value.category),
         description: newEvent.value.description || '',
-        endDate: formattedEndDate,
+        endDate: calculatedEndDate || formattedEndDate,
         escrow: newEvent.value.escrow ? parseFloat(newEvent.value.escrow) : null,
         frequency: newEvent.value.frequency,
         interest: newEvent.value.interest ? parseFloat(newEvent.value.interest) : null,
-        loanTerm: newEvent.value.loanTerm ? parseInt(newEvent.value.loanTerm) : null,
-        monthlyAmount: newEvent.value.monthlyAmount ? String(newEvent.value.monthlyAmount) : '',
-        monthlyPayment: newEvent.value.monthlyAmount
-          ? parseFloat(newEvent.value.monthlyAmount)
-          : null,
+        loanTerm: newEvent.value.loanTerm ? parseInt(newEvent.value.loanTerm, 10) : null,
+        monthlyAmount: monthlyPayment != null ? String(monthlyPayment) : '',
+        monthlyPayment,
         name: newEvent.value.name,
         principal: newEvent.value.principal != null && newEvent.value.principal !== ''
           ? parseFloat(newEvent.value.principal)
@@ -463,12 +653,8 @@ async function saveEvent() {
 
     // The plan changed, so the cached Home view is stale.
     overviewStore.invalidate()
-
-    if (eventID) {
-      router.back()
-    } else {
-      router.push('/overview')
-    }
+    eventsStore.invalidateMonthSnapshot()
+    await router.push({ name: 'Overview' })
   } catch (error) {
     console.error('Error saving event:', error)
     $q.notify({
@@ -579,12 +765,74 @@ onMounted(async () => {
   loadEvent()
 })
 
-// Watch loan term and start date to calculate end date automatically
+// Watch loan-related fields to trigger calculation
+watch(
+  () => newEvent.value.amount,
+  () => {
+    if (
+      isLoanCategory.value &&
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
+watch(
+  () => newEvent.value.interest,
+  () => {
+    if (
+      isLoanCategory.value &&
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
+watch(
+  () => newEvent.value.principal,
+  () => {
+    if (
+      isLoanCategory.value &&
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
+    }
+  },
+)
+
 watch(
   () => newEvent.value.loanTerm,
   () => {
-    if (isLoanCategory.value && newEvent.value.startDate && newEvent.value.loanTerm) {
+    const hasAllFields =
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm &&
+      newEvent.value.startDate
+
+    if (
+      !hasAllFields &&
+      isLoanCategory.value &&
+      newEvent.value.startDate &&
+      newEvent.value.loanTerm
+    ) {
       calculateEndDateFromTerm()
+    }
+
+    if (
+      isLoanCategory.value &&
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
     }
   },
 )
@@ -592,8 +840,28 @@ watch(
 watch(
   () => newEvent.value.startDate,
   () => {
-    if (isLoanCategory.value && newEvent.value.startDate && newEvent.value.loanTerm) {
+    const hasAllFields =
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm &&
+      newEvent.value.startDate
+
+    if (
+      !hasAllFields &&
+      isLoanCategory.value &&
+      newEvent.value.startDate &&
+      newEvent.value.loanTerm
+    ) {
       calculateEndDateFromTerm()
+    }
+
+    if (
+      isLoanCategory.value &&
+      newEvent.value.amount &&
+      newEvent.value.interest &&
+      newEvent.value.loanTerm
+    ) {
+      debouncedCalculateLoan()
     }
   },
 )
@@ -763,6 +1031,65 @@ watch(
   font-size: 1.2rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.loan-preview-card {
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.35);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.loan-preview-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+.loan-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.loan-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+
+  &.highlight {
+    background: rgba(76, 175, 80, 0.18);
+    border: 1px solid rgba(76, 175, 80, 0.4);
+  }
+}
+
+.loan-preview-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.loan-preview-value {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+
+  .highlight & {
+    color: #4caf50;
+    font-size: 1.05rem;
+  }
 }
 
 .form-actions {

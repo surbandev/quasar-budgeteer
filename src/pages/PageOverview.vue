@@ -836,7 +836,24 @@ async function initializeOverview() {
 async function loadProfileData() {
   try {
     if (currentProfile.value) {
-      activeScenarios.value = new Set(['default'])
+      // Keep the user's scenario layers and date range when refetching after an edit.
+      if (overviewStore.activeScenarios?.length) {
+        activeScenarios.value = new Set(overviewStore.activeScenarios)
+      } else {
+        activeScenarios.value = new Set(['default'])
+      }
+
+      if (overviewStore.range) {
+        startMonth.value = overviewStore.range.startMonth
+        startDay.value = overviewStore.range.startDay
+        startYear.value = overviewStore.range.startYear
+        endMonth.value = overviewStore.range.endMonth
+        endDay.value = overviewStore.range.endDay
+        endYear.value = overviewStore.range.endYear
+        quickRangePreset.value = overviewStore.quickRangePreset
+        isOneYearView.value = overviewStore.isOneYearView
+      }
+
       combinedActiveEvents.value = []
       eventsStore.setCombinedActiveEvents([])
       dailySpendingData.value = []

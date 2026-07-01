@@ -477,6 +477,8 @@ export const useEventsStore = defineStore('events', () => {
       throw new Error('No profile set for updating event')
     }
 
+    invalidateMonthSnapshot()
+
     loading.value = true
     error.value = null
 

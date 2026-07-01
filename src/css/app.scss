@@ -158,12 +158,19 @@ input::-webkit-inner-spin-button {
   margin-left: 10px;
 }
 
+// Mobile browsers resize the visible viewport when toolbars show/hide; dvh tracks
+// that better than vh. --app-vv-bottom is updated from MainLayout on visualViewport.
+html {
+  height: -webkit-fill-available;
+}
+
 // Dark theme and glassmorphism styles (matches login/register pages)
 body {
   background: var(--page-bg);
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 // Glass card styling (matches login/register glassmorphism)

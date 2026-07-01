@@ -1,28 +1,31 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="main-layout">
+  <q-layout view="hHh lpR fff" class="main-layout">
     <q-page-container>
       <router-view />
     </q-page-container>
 
     <InstallAppBanner />
 
-    <!-- Bottom Navigation (Buddy-style floating pill) -->
-    <q-footer class="bottom-nav">
-      <nav class="buddy-nav" role="tablist">
-        <button
-          v-for="item in navItems"
-          :key="item.id"
-          type="button"
-          class="buddy-nav-item"
-          :class="{ active: activeNav === item.id }"
-          :aria-selected="activeNav === item.id"
-          @click="goToNav(item.id)"
-        >
-          <q-icon :name="item.icon" size="22px" class="buddy-nav-icon" />
-          <span class="buddy-nav-label">{{ item.label }}</span>
-        </button>
-      </nav>
-    </q-footer>
+    <!-- Teleport keeps the nav out of q-layout so iOS Safari doesn't treat it as
+         in-flow when the visual viewport resizes (address bar show/hide). -->
+    <Teleport to="body">
+      <footer class="bottom-nav" role="navigation" aria-label="Main">
+        <nav class="buddy-nav" role="tablist">
+          <button
+            v-for="item in navItems"
+            :key="item.id"
+            type="button"
+            class="buddy-nav-item"
+            :class="{ active: activeNav === item.id }"
+            :aria-selected="activeNav === item.id"
+            @click="goToNav(item.id)"
+          >
+            <q-icon :name="item.icon" size="22px" class="buddy-nav-icon" />
+            <span class="buddy-nav-label">{{ item.label }}</span>
+          </button>
+        </nav>
+      </footer>
+    </Teleport>
   </q-layout>
 </template>
 
@@ -90,19 +93,38 @@ function onPwaUpdated() {
   })
 }
 
+function syncNavToVisualViewport() {
+  const vv = window.visualViewport
+  if (!vv) {
+    document.documentElement.style.removeProperty('--app-vv-bottom')
+    return
+  }
+
+  // Pin the nav to the visible screen bottom while mobile browser chrome animates.
+  const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+  document.documentElement.style.setProperty('--app-vv-bottom', `${inset}px`)
+}
+
 onMounted(() => {
   window.addEventListener('budgeteer-pwa-updated', onPwaUpdated)
+  syncNavToVisualViewport()
+  window.visualViewport?.addEventListener('resize', syncNavToVisualViewport)
+  window.visualViewport?.addEventListener('scroll', syncNavToVisualViewport)
 })
 
 onUnmounted(() => {
   window.removeEventListener('budgeteer-pwa-updated', onPwaUpdated)
+  window.visualViewport?.removeEventListener('resize', syncNavToVisualViewport)
+  window.visualViewport?.removeEventListener('scroll', syncNavToVisualViewport)
+  document.documentElement.style.removeProperty('--app-vv-bottom')
 })
 </script>
 
 <style scoped lang="scss">
 .main-layout {
   background: var(--page-bg);
-  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 // Header gradient (themeable via --header-gradient)
@@ -200,13 +222,15 @@ onUnmounted(() => {
   padding-bottom: 70px; // Space for bottom nav
 }
 
-// Bottom navigation — always fixed like Buddy; content scrolls underneath.
+// Bottom navigation — fixed to the visual viewport; content scrolls underneath.
 .bottom-nav {
-  position: fixed !important;
-  bottom: 0;
+  position: fixed;
+  bottom: var(--app-vv-bottom, 0px);
   left: 0;
   right: 0;
   z-index: 2000;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
   background: transparent;
   box-shadow: none;
   border: none;
@@ -222,6 +246,7 @@ onUnmounted(() => {
 
 .main-layout :deep(.q-page-container) {
   background: var(--page-bg-solid);
+  padding-bottom: var(--buddy-nav-offset);
 }
 
 .buddy-nav {

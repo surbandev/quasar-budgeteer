@@ -103,7 +103,7 @@ onUnmounted(() => {
   position: fixed;
   left: 0.75rem;
   right: 0.75rem;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
+  bottom: calc(var(--app-vv-bottom, 0px) + env(safe-area-inset-bottom, 0px) + 5.5rem);
   z-index: 1999;
   max-width: 460px;
   margin: 0 auto;
