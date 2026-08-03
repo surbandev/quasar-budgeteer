@@ -41,6 +41,8 @@
         :loading="chartLoading"
         @toggleScenario="toggleScenario"
         @deleteScenario="deleteScenario"
+        @selectQuickRange="handleQuickRangeSelection"
+        @spendingLogged="onSpendingLogged"
       />
 
       <q-card class="glass-card buddy-mini-calendar-card">
@@ -466,6 +468,50 @@ function initializeDateRangeToCurrentMonth() {
   endYear.value = year
   isOneYearView.value = false
   quickRangePreset.value = 'month'
+}
+
+async function applyQuickRange(months) {
+  if (months === 1) {
+    initializeDateRangeToCurrentMonth()
+    await updateFilteredData()
+    return
+  }
+
+  const monthStart = new Date()
+  monthStart.setHours(0, 0, 0, 0)
+  monthStart.setDate(1)
+
+  const rangeEndDate = new Date(monthStart)
+  rangeEndDate.setMonth(rangeEndDate.getMonth() + months)
+  rangeEndDate.setDate(rangeEndDate.getDate() - 1)
+
+  startMonth.value = monthStart.getMonth() + 1
+  startDay.value = 1
+  startYear.value = monthStart.getFullYear()
+  endMonth.value = rangeEndDate.getMonth() + 1
+  endDay.value = rangeEndDate.getDate()
+  endYear.value = rangeEndDate.getFullYear()
+
+  isOneYearView.value = months === 12
+  quickRangePreset.value = months === 12 ? '1y' : '6m'
+  await updateFilteredData()
+}
+
+async function handleQuickRangeSelection(rangeKey) {
+  if (rangeKey === '6m') {
+    await applyQuickRange(6)
+    return
+  }
+  if (rangeKey === '1y') {
+    await applyQuickRange(12)
+    return
+  }
+  await applyQuickRange(1)
+}
+
+async function onSpendingLogged() {
+  lastFetchedRangeKey = ''
+  await updateFilteredData()
 }
 
 function hasDateRangeFilter() {

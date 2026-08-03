@@ -27,7 +27,7 @@
     "build:cap:ios": "quasar build -m capacitor -T ios",
     "ios:run": "bash scripts/ios.sh run",
     "ios:build": "bash scripts/ios.sh build",
-    "deploy": "npx @railway/cli up --detach -y --service budgeteer",
+    "deploy": "railway up --detach -y --service budgeteer",
     "db:backup": "node backend/scripts/backup-databases.js",
     "db:restore": "node backend/scripts/restore-databases.js",
     "db:restore:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-to-railway.ps1",

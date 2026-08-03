@@ -1,11 +1,20 @@
 <template>
   <q-card class="spent-chart-card buddy-overlap-card">
     <q-card-section>
-      <!-- Buddy-style hero: spent + remaining side by side -->
-      <div class="buddy-chart-hero buddy-chart-hero-split">
+      <!-- Buddy-style hero: spent | cash flow | remaining -->
+      <div class="buddy-chart-hero buddy-chart-hero-split buddy-chart-hero-three">
         <div class="hero-stat">
           <span class="chart-label">{{ chartLabel }}</span>
           <h2 class="chart-amount">{{ formatCurrency(totalSpent) }}</h2>
+        </div>
+        <div class="hero-stat hero-stat-center">
+          <span class="chart-label">CASH FLOW</span>
+          <h2 class="chart-amount" :class="netClass(monthlyBalance)">
+            {{ formatCurrency(monthlyBalance) }}
+          </h2>
+          <button type="button" class="log-spending-link" @click="openLogSpending">
+            Log spending
+          </button>
         </div>
         <div class="hero-stat hero-stat-right">
           <span class="chart-label">{{ leftLabel }}</span>
@@ -23,16 +32,112 @@
         </transition>
       </div>
 
-      <div class="chart-legend">
-        <div class="legend-item">
-          <div class="legend-dot purple"></div>
-          <span class="legend-text">This period</span>
+      <div class="chart-footer-controls">
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot purple"></div>
+            <span class="legend-text">This period</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot green"></div>
+            <span class="legend-text">Income</span>
+          </div>
         </div>
-        <div class="legend-item">
-          <div class="legend-dot green"></div>
-          <span class="legend-text">Income</span>
+        <div class="glance-text-actions">
+          <button
+            type="button"
+            class="glance-text"
+            :class="{ active: quickRangePreset === 'month' }"
+            @click="emit('selectQuickRange', 'month')"
+          >
+            {{ currentMonthName }}
+          </button>
+          <span class="glance-sep">·</span>
+          <button
+            type="button"
+            class="glance-text"
+            :class="{ active: quickRangePreset === '6m' }"
+            @click="emit('selectQuickRange', '6m')"
+          >
+            6 months
+          </button>
+          <span class="glance-sep">·</span>
+          <button
+            type="button"
+            class="glance-text"
+            :class="{ active: quickRangePreset === '1y' }"
+            @click="emit('selectQuickRange', '1y')"
+          >
+            1 year
+          </button>
         </div>
       </div>
+
+      <q-dialog v-model="showLogSpending" persistent>
+        <q-card class="log-spending-dialog">
+          <q-card-section>
+            <div class="log-dialog-title">Log spending</div>
+            <div class="log-dialog-subtitle">
+              Record living expenses so cash flow, calendar, and monthly totals stay accurate.
+            </div>
+          </q-card-section>
+
+          <q-card-section class="q-pt-none log-dialog-form">
+            <q-input
+              v-model.number="logForm.amount"
+              type="number"
+              min="0"
+              step="0.01"
+              label="Amount"
+              outlined
+              dense
+              dark
+              prefix="$"
+            />
+            <q-select
+              v-model="logForm.category"
+              :options="expenseCategoryOptions"
+              label="Category"
+              outlined
+              dense
+              dark
+              emit-value
+              map-options
+            />
+            <q-input
+              v-model="logForm.note"
+              label="Note (optional)"
+              placeholder="e.g. Dinner out, fill-up"
+              outlined
+              dense
+              dark
+            />
+            <q-input
+              v-model="logForm.date"
+              type="date"
+              label="Date"
+              outlined
+              dense
+              dark
+              :min="minSpendDate"
+              :max="maxSpendDate"
+            />
+          </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat no-caps label="Cancel" color="white" v-close-popup />
+            <q-btn
+              unelevated
+              no-caps
+              label="Save"
+              color="primary"
+              :loading="savingSpend"
+              :disable="!canSaveSpend"
+              @click="saveLogSpending"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
 
       <!-- Planning-only "Connected Accounts" → active scenario layers -->
       <div class="scenarios-panel">
@@ -184,7 +289,9 @@
 <script setup>
 import { computed, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useEventsStore } from '../stores/events'
+import { useConstantsStore } from '../stores/constants'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -284,9 +391,13 @@ const props = defineProps({
   },
 })
 
-defineEmits(['toggleScenario', 'deleteScenario'])
+const emit = defineEmits(['toggleScenario', 'deleteScenario', 'selectQuickRange', 'spendingLogged'])
 
+const $q = useQuasar()
 const eventsStore = useEventsStore()
+const constantsStore = useConstantsStore()
+
+const INCOME_CATEGORIES = new Set(['PRIMARY_INCOME', 'SECONDARY_INCOME', 'MISC'])
 
 // Use store values as single source of truth (override props if store has values)
 const monthlyIncome = computed(() => eventsStore.monthlyIncome ?? props.monthlyIncome)
@@ -294,6 +405,141 @@ const monthlyExpenses = computed(() => eventsStore.monthlyExpenses ?? props.mont
 const monthlySavings = computed(() => eventsStore.monthlySavings ?? props.monthlySavings)
 const leftThisMonth = computed(() => props.totalExpensesLeft || 0)
 const planNet = computed(() => monthlyIncome.value - monthlyExpenses.value)
+const monthlyBalance = computed(() => {
+  const fromStore = eventsStore.cashFlow
+  return fromStore != null ? fromStore : props.monthlyBalance
+})
+
+const showLogSpending = ref(false)
+const savingSpend = ref(false)
+const logForm = ref({
+  amount: null,
+  category: 'DINING',
+  note: '',
+  date: new Date().toISOString().split('T')[0],
+})
+
+const expenseCategoryOptions = computed(() =>
+  (constantsStore.getCategoryOptions || []).filter(
+    (option) => !INCOME_CATEGORIES.has(option.value),
+  ),
+)
+
+const currentMonthName = computed(() =>
+  new Date().toLocaleString('default', { month: 'long' }),
+)
+
+function toDateInputValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return new Date().toISOString().split('T')[0]
+  }
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const minSpendDate = computed(() => {
+  if (props.startDate instanceof Date) {
+    return toDateInputValue(props.startDate)
+  }
+  const now = new Date()
+  return toDateInputValue(new Date(now.getFullYear(), now.getMonth(), 1))
+})
+
+const maxSpendDate = computed(() => {
+  if (props.endDate instanceof Date) {
+    return toDateInputValue(props.endDate)
+  }
+  const now = new Date()
+  return toDateInputValue(new Date(now.getFullYear(), now.getMonth() + 1, 0))
+})
+
+const canSaveSpend = computed(() => {
+  const amount = Number(logForm.value.amount)
+  return (
+    Number.isFinite(amount) &&
+    amount > 0 &&
+    Boolean(logForm.value.category) &&
+    Boolean(logForm.value.date)
+  )
+})
+
+function categoryLabel(categoryValue) {
+  const match = expenseCategoryOptions.value.find((option) => option.value === categoryValue)
+  return match?.label || categoryValue || 'Expense'
+}
+
+function openLogSpending() {
+  const today = toDateInputValue(new Date())
+  const min = minSpendDate.value
+  const max = maxSpendDate.value
+  let date = today
+  if (date < min) date = min
+  if (date > max) date = max
+
+  logForm.value = {
+    amount: null,
+    category: 'DINING',
+    note: '',
+    date,
+  }
+  showLogSpending.value = true
+}
+
+async function saveLogSpending() {
+  if (!canSaveSpend.value) return
+
+  const scenarioID = eventsStore.selectedScenario?.id
+  const profileID = props.currentProfile?.id || props.currentProfile?._id || eventsStore.profile?.id
+
+  if (!scenarioID || !profileID) {
+    $q.notify({
+      type: 'negative',
+      message: 'Select a profile and scenario before logging spending',
+      position: 'top',
+    })
+    return
+  }
+
+  savingSpend.value = true
+  try {
+    const date = logForm.value.date
+    const note = logForm.value.note?.trim() || ''
+    await eventsStore.createEvent({
+      name: categoryLabel(logForm.value.category),
+      description: note,
+      amount: Number(logForm.value.amount),
+      category: logForm.value.category,
+      frequency: 'ONCE',
+      type: 'DEBIT',
+      startDate: date,
+      endDate: date,
+      calculatedEndDate: date,
+      scenarioID,
+      profileID,
+      active: true,
+    })
+
+    showLogSpending.value = false
+    $q.notify({
+      type: 'positive',
+      message: 'Spending logged',
+      position: 'top',
+      timeout: 2000,
+    })
+    emit('spendingLogged')
+  } catch (error) {
+    console.error('Failed to log spending:', error)
+    $q.notify({
+      type: 'negative',
+      message: error?.response?.data?.error || error.message || 'Failed to log spending',
+      position: 'top',
+    })
+  } finally {
+    savingSpend.value = false
+  }
+}
 
 const activeLayerCount = computed(() => props.activeScenarios.size)
 const activeLayerCountLabel = computed(() => {
@@ -792,13 +1038,104 @@ function formatCurrency(amount) {
   gap: 1rem;
 }
 
+.buddy-chart-hero-three {
+  align-items: flex-start;
+}
+
 .hero-stat {
   flex: 1;
   min-width: 0;
 
+  &.hero-stat-center {
+    text-align: center;
+  }
+
   &.hero-stat-right {
     text-align: right;
   }
+}
+
+.log-spending-link {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.35rem;
+
+  &:hover {
+    color: white;
+  }
+}
+
+.chart-footer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.15rem 0 0.35rem;
+}
+
+.glance-text-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.glance-text {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+
+  &.active {
+    color: white;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+  }
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.glance-sep {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.8rem;
+}
+
+.log-spending-dialog {
+  width: min(420px, 92vw);
+  background: #1a1a1a;
+  color: white;
+}
+
+.log-dialog-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.log-dialog-subtitle {
+  margin-top: 0.35rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.log-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .scenario-row-net {
@@ -832,11 +1169,42 @@ function formatCurrency(amount) {
   &.left-amount {
     color: #f87171;
   }
+
+  &.positive {
+    color: #4ade80;
+  }
+
+  &.negative {
+    color: #f87171;
+  }
+}
+
+@media (max-width: 600px) {
+  .buddy-chart-hero-three {
+    gap: 0.5rem;
+  }
+
+  .buddy-chart-hero-three .chart-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.8px;
+    margin-bottom: 0.1rem;
+  }
+
+  .buddy-chart-hero-three .chart-amount {
+    font-size: 1.2rem;
+    letter-spacing: -0.4px;
+    margin-top: 0.1rem;
+  }
+
+  .buddy-chart-hero-three .log-spending-link {
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+  }
 }
 
 @media (max-width: 380px) {
-  .chart-amount {
-    font-size: 2.15rem;
+  .buddy-chart-hero-three .chart-amount {
+    font-size: 1.05rem;
   }
 }
 
