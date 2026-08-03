@@ -28,6 +28,7 @@
         @deleteScenario="deleteScenario"
         @profileChange="handleProfileChange"
         @selectQuickRange="handleQuickRangeSelection"
+        @spendingLogged="onSpendingLogged"
       >
         <template #rightControls>
           <div class="date-range-filters in-chart">
@@ -634,6 +635,11 @@ async function handleQuickRangeSelection(rangeKey) {
     return
   }
   await applyQuickRange(1)
+}
+
+async function onSpendingLogged() {
+  lastFetchedRangeKey = ''
+  await updateFilteredData()
 }
 
 async function onDateFilterChange() {

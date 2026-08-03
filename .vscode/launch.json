@@ -29,7 +29,13 @@
       "name": "Deploy",
       "type": "node-terminal",
       "request": "launch",
-      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .vscode/deploy.ps1"
+      "command": "node .vscode/deploy.js",
+      "linux": {
+        "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && node .vscode/deploy.js"
+      },
+      "osx": {
+        "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && node .vscode/deploy.js"
+      }
     }
   ]
 }
