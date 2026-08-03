@@ -8,12 +8,6 @@
       "command": "export PATH=\"$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && npm run dev:all"
     },
     {
-      "name": "Run (Railway DB)",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "npm run dev:all:railway"
-    },
-    {
       "name": "Run Tests",
       "type": "node-terminal",
       "request": "launch",
