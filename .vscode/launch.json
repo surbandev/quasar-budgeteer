@@ -1,95 +1,53 @@
 {
-
   "version": "0.2.0",
-
   "configurations": [
-
     {
-
       "name": "Run",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npm run dev:all"
-
     },
-
     {
-
       "name": "Run (Railway DB)",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npm run dev:all:railway"
-
     },
-
     {
-
       "name": "Run Vitest",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npx vitest run"
-
     },
-
     {
-
       "name": "Run E2E",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npm run test:e2e"
-
     },
-
     {
-
       "name": "Run on iOS (device/simulator, macOS)",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npm run ios:run"
-
     },
-
     {
-
       "name": "Build iOS + open Xcode (macOS)",
-
       "type": "node-terminal",
-
       "request": "launch",
-
       "command": "npm run ios:build"
-
     },
-
     {
-
       "name": "Deploy",
-
       "type": "node-terminal",
-
       "request": "launch",
-
-      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .vscode/deploy.ps1"
-
+      "command": "node .vscode/deploy.cjs",
+      "linux": {
+        "command": "export PATH=\"$HOME/.railway/bin:$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && node .vscode/deploy.cjs"
+      },
+      "osx": {
+        "command": "export PATH=\"$HOME/.railway/bin:$HOME/.local/node/bin:$HOME/.gem/ruby/2.6.0/bin:$PATH\" && node .vscode/deploy.cjs"
+      }
     }
-
   ]
-
 }
-
-
